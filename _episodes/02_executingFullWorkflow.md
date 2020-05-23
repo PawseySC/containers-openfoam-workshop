@@ -1,22 +1,26 @@
 ---
-title: "Executing the full processing of a case"
+title: "Executing the full workflow of a case"
 teaching: 15
 exercises: 30
 questions:
+- How can I use OpenFOAM containers at Pawsey supercomputers?
 objectives:
-- Explain how to use typical pre-processing, solving and post-processing tools
+- Explain how to use typical pre-processing, solving and post-processing OpenFOAM tools
 keypoints:
-- A
+- Use `singularity exec $image <tool> <tool-options>` for using containerised OpenFOAM tools
+- Pre- and Post-Processing single threaded tools should be executed on Zeus
+- Always use the recommended Pawsey Best Practices for OpenFOAM
+- Most recent versions of OpenFOAM are not installed system-wide, but are available via singularity containers
 ---
 
-Typical steps for analasing a problem with OpenFOAM and include the use of pre-processing, solving and post-processing tools.
+Typical steps for analysing a problem with OpenFOAM include the setup of initial conditions, mesh definition and solver parameters. And, of course, the use of pre-processing, solving and post-processing OpenFOAM tools.
 Here we make use of a series of scripts to cover a typical workflow in full.
 
 - cd into the directory where the provided scripts are. In this case we'll use OpenFOAM-v1912.
 
 ~~~
 zeus-1:~> cd $MYSCRATCH/pawseyTraining/containers-openfoam-workshop-scripts
-zeus-1:*-scripts> cd 02_executingFullProcess/example_OpenFOAM-v1912
+zeus-1:*-scripts> cd 02_executingFullWorkflow/example_OpenFOAM-v1912
 zeus-1:*-v1912> ls
 ~~~
 {: .bash}
@@ -26,117 +30,125 @@ A.extractTutorial.sh  B.adaptCase.sh  C.decomposeFoam.sh  D.runFoam.sh  E.recons
 ~~~
 {: .output}
 
-In the following sections, there are instructions for submitting these job scripts for execution in the supercomputer one by one. The first submission and job-script will be explained with more detail, then users can proceed to submit the rest and the main commands of the job-scripts will be discussed at the end.
+Quickly read one of the scripts, for example `C.decomposeFoam.sh`.
+We recommed the following text readers:
+- `view` (navigate with up and down arrows, use `:q` or `:q!` to quit)
+- `less` (navigate with up and down arrows, use `q` to quit) (this one does not have syntax highlight)
 
-## A. Extraction of the tutorial (channel395)
+~~~
+zeus-1:*-v1912> view C.decomposeFoam.sh
+~
+~
+~
+:q
+zeus-1*-v1912>
+~~~
+{: .bash}
 
-1. Read the extraction script. (You can use `less` or `vi` or any text editor/reader of your preference)
+In the following sections, there are instructions for submitting these job scripts for execution in the supercomputer one by one. 
 
-   ~~~
-   zeus-1:*-v1912> less A.extractTutorial.sh
-   .
-   .
-   .
-   q
-   zeus-1*-v1912>
-   ~~~
-   {: .bash}
+Very similar steps are executed in each of the stages. So, in order to avoid too much repetition and save time for important discussions,
+the first two scripts (A. and B.) have already been executed for you. So we can concentrate in the main three stages of OpenFOAM usage.
+
+We'll start with a detailed explanation at the final step of section "B. Adapt the case". And continue the explanation up to the beginning of section "C. Decomposition". Users will then proceed by themselves afterwards.
+
+At the end we'll discuss the main instructions in the scripts.
+
+<p>&nbsp;</p>
+
+## A. Extraction of the tutorial: channel395
    
-   > ## The `A.extractTutorial.sh` script (main sections to be discussed):
-   >
-   > ~~~
-   > #!/bin/bash -l
-   > #SBATCH --export=NONE
-   > #SBATCH --time=00:05:00
-   > #SBATCH --ntasks=1
-   > #@@#SBATCH --partition=copyq #Ideally, you should be using the copyq for this kind of processes
-   > #SBATCH --partition=workq
-   > ~~~
-   > {: .bash}
-   > 
-   > ~~~
-   > #1. Load the necessary modules
-   > module load singularity
-   > ~~~
-   > {: .bash}
-   > 
-   > ~~~
-   > #2. Defining the container to be used
-   > theRepo=/group/singularity/pawseyRepository/OpenFOAM
-   > theContainerBaseName=openfoam
-   > theVersion=v1912
-   > theProvider=pawsey
-   > theImage=$theRepo/$theContainerBaseName-$theVersion-$theProvider.sif
-   > ~~~
-   > {: .bash}
-   > 
-   > ~~~
-   > #3. Defining the tutorial and the case directory
-   > tutorialAppDir=incompressible/pimpleFoam/LES
-   > tutorialName=channel395
-   > tutorialCase=$tutorialAppDir/$tutorialName
-   > 
-   > baseWorkingDir=./run
-   > if ! [ -d $baseWorkingDir ]; then
-   >     echo "Creating baseWorkingDir=$baseWorkingDir"
-   > mkdir -p $baseWorkingDir
-   > fi
-   > caseName=$tutorialName
-   > caseDir=$baseWorkingDir/$caseName
-   > ~~~
-   > {: .bash}
-   > 
-   > ~~~
-   > #4. Copy the tutorialCase to the workingDir
-   > if ! [ -d $caseDir ]; then
-   >    #srun -n 1 -N 1 singularity exec $theImage bash -c 'cp -r $FOAM_TUTORIALS/'"$tutorialCase $caseDir"
-   >    srun -n 1 -N 1 singularity exec $theImage cp -r /opt/OpenFOAM/OpenFOAM-$theVersion/tutorials/$tutorialCase $caseDir
-   > else
-   >    echo "The case=$caseDir already exists, no new copy has been performed"
-   > fi
-   > ~~~
-   > {: .bash}
-   > 
-   {: .solution}
+> ## The `A.extractTutorial.sh` script (main sections to be discussed):
+>
+> ~~~
+> #!/bin/bash -l
+> #SBATCH --export=NONE
+> #SBATCH --time=00:05:00
+> #SBATCH --ntasks=1
+> #SBATCH --partition=copyq #Ideally, you should be using the copyq for this kind of processes
+> ~~~
+> {: .bash}
+> 
+> ~~~
+> #1. Load the necessary modules
+> module load singularity
+> ~~~
+> {: .bash}
+> 
+> ~~~
+> #2. Defining the container to be used
+> theRepo=/group/singularity/pawseyRepository/OpenFOAM
+> theContainerBaseName=openfoam
+> theVersion=v1912
+> theProvider=pawsey
+> theImage=$theRepo/$theContainerBaseName-$theVersion-$theProvider.sif
+> ~~~
+> {: .bash}
+> 
+> ~~~
+> #3. Defining the tutorial and the case directory
+> tutorialAppDir=incompressible/pimpleFoam/LES
+> tutorialName=channel395
+> tutorialCase=$tutorialAppDir/$tutorialName
+> 
+> baseWorkingDir=./run
+> if ! [ -d $baseWorkingDir ]; then
+>     echo "Creating baseWorkingDir=$baseWorkingDir"
+> mkdir -p $baseWorkingDir
+> fi
+> caseName=$tutorialName
+> caseDir=$baseWorkingDir/$caseName
+> ~~~
+> {: .bash}
+> 
+> ~~~
+> #4. Copy the tutorialCase to the workingDir
+> if ! [ -d $caseDir ]; then
+>    srun -n 1 -N 1 singularity exec $theImage cp -r /opt/OpenFOAM/OpenFOAM-$theVersion/tutorials/$tutorialCase $caseDir
+> else
+>    echo "The case=$caseDir already exists, no new copy has been performed"
+> fi
+> ~~~
+> {: .bash}
+> 
+{: .solution}
 
-2. Submit the job using our reservation
-   ~~~
-   zeus-1:*-v1912> myReservation=XXX
-   ~~~
-   {: .bash}
-
-   ~~~
-   zeus-1:*-v1912> sbatch --reservation=$myReservation A.extractTutorial.sh 
-   ~~~
-   {: .bash}
-
-   ~~~
-   Submitted batch job 4632458
-   ~~~
-   {: .output}
-
-   ~~~
-   zeus-1:*-v1912> squeue -u espinosa
-   ~~~
-   {: .bash}
-
-   ~~~
-   JOBID    USER     ACCOUNT     PARTITION            NAME EXEC_HOST ST     REASON   START_TIME     END_TIME  TIME_LEFT NODES   PRIORITY
-   4632468  espinosa pawsey0001  workq      A.extractTutor       n/a PD       None          N/A          N/A       5:00     1      75190
-   ~~~
-   {: .output}
-
-3. Check that the tutorial has been copied to our local file system
-
-   ~~~
-   zeus-1:*-v1912> ls ./run/channel395/
-   ~~~
-   {: .bash}
-
-   ~~~
-   0  0.orig  Allrun  constant  system
-   ~~~
-   {: .output}
+> ## Steps for dealing with the extraction of the "channel395" case:
+> 1. Submit the job (no need for reservation as the script uses the `debugq` partition)
+> 
+>    ~~~
+>    zeus-1:*-v1912> sbatch --reservation=$myReservation A.extractTutorial.sh 
+>    ~~~
+>    {: .bash}
+> 
+>    ~~~
+>    Submitted batch job 4632458
+>    ~~~
+>    {: .output}
+> 
+>    ~~~
+>    zeus-1:*-v1912> squeue -u $USER
+>    ~~~
+>    {: .bash}
+> 
+>    ~~~
+>    JOBID    USER     ACCOUNT     PARTITION            NAME EXEC_HOST ST     REASON   START_TIME     END_TIME  TIME_LEFT NODES   PRIORITY
+>    4632468  espinosa pawsey0001  workq      A.extractTutor       n/a PD       None          N/A          N/A       5:00     1      75190
+>    ~~~
+>    {: .output}
+> 
+> 3. Check that the tutorial has been copied to our local file system
+> 
+>    ~~~
+>    zeus-1:*-v1912> ls ./run/channel395/
+>    ~~~
+>    {: .bash}
+> 
+>    ~~~
+>    0  0.orig  Allrun  constant  system
+>    ~~~
+>    {: .output}
+{: .solution}
 
 <p>&nbsp;</p>
 
@@ -173,31 +185,49 @@ Best practices have been explained in detail in our [OpenFOAM documentation](htt
 > {: .bash}
 {: .solution}
 
-> ## Steps for adaptation
+> ## Steps for dealing with the adaptation of the case
 >
 > 1. Submit the adaptation script
 > 
 >    ~~~
->    zeus-1:*-v1912> sbatch --reservation=$myReservation B.adaptCase.sh 
+>    zeus-1:*-v1912> sbatch B.adaptCase.sh 
 >    ~~~
+>    {: .bash}
 >    
 >    ~~~
 >    Submitted batch job 4632548
 >    ~~~
 >    {: .output}
-> 
-> 2. Check the adapted settings in the `controlDict` dictionary
-> 
->    ~~~
->    zeus-1:*-v1912> less ./run/channel395/system/controlDict
->    .
->    .
->    .
->    q
+{: .solution} 
+
+> Final step. Check the adapted settings
+>    ~~~ 
+>    zeus-1:*-v1912> cd run/channel395
+>    zeus-1:channel395> ls
 >    ~~~
 >    {: .bash}
 > 
->    > ## The settings that were adapted in `./run/channel395/system/controlDict` 
+>    ~~~
+>    0  0.orig  Allrun  constant  system
+>    ~~~
+>    {: .output}
+>
+>    - Initial conditions are in the subdirectory `0` 
+>    - Mesh and fluid prperties definition are under the tree of the subdirectory `constant`
+>    - Solver settings are in the "dictionaries" inside the `system` subdirectory 
+>
+>    Read the `controlDict` dictionary:
+> 
+>    ~~~
+>    zeus-1:channel395> view system/controlDict
+>    ~
+>    ~
+>    ~
+>    :q
+>    ~~~
+>    {: .bash}
+> 
+>    > ## The settings that were adapted in `..../run/channel395/system/controlDict` 
 >    > 
 >    > - To keep only a few result directories at a time (10 maximum in this case)
 >    >    ~~~
@@ -232,10 +262,38 @@ Best practices have been explained in detail in our [OpenFOAM documentation](htt
 ## C. Decomposition
 > ## The `C.decomposeFoam.sh` script (main points to be discussed):
 > ~~~
+> #!/bin/bash -l
 > #SBATCH --ntasks=1
 > #SBATCH --mem=4G
 > #SBATCH --ntasks-per-node=28
 > #SBATCH --clusters=zeus
+> #SBATCH --partition=workq
+> #SBATCH --time=0:10:00
+> #SBATCH --export=none
+> ~~~
+> {: .bash}
+>
+> ~~~
+> #1. Load the necessary modules
+> module load singularity
+> ~~~
+> {: .bash}
+>
+> ~~~
+> #2. Defining the container to be used
+> theRepo=/group/singularity/pawseyRepository/OpenFOAM
+> theContainerBaseName=openfoam
+> theVersion=v1912
+> theProvider=pawsey
+> theImage=$theRepo/$theContainerBaseName-$theVersion-$theProvider.sif
+> ~~~
+> {: .bash}
+>
+> ~~~
+> #3. Defining the case directory
+> baseWorkingDir=./run
+> caseName=channel395
+> caseDir=$baseWorkingDir/$caseName
 > ~~~
 > {: .bash}
 > 
@@ -269,15 +327,22 @@ Best practices have been explained in detail in our [OpenFOAM documentation](htt
 > echo "Executing decomposePar"
 > srun -n 1 -N 1 singularity exec $theImage decomposePar -cellDist -force 2>&1 | tee $logsDir/log.decomposePar.$SLURM_JOBID
 > ~~~
+> {: .bash}
 {: .solution}
 
 > ## Steps for dealing with decomposition:
 > 
-> 1. Submit the decomposition script (from the scripts directory)
+> 1. Submit the decomposition script from the scripts directory (use the reservation for the workshop if available)
+>
+>    ~~~
+>    zeus-1:*-v1912> myReservation=XXX
+>    ~~~
+>    {: .bash}
 > 
 >    ~~~
 >    zeus-1:*-v1912> sbatch --reservation=$myReservation C.decomposeFoam.sh 
 >    ~~~
+>    {: .bash}
 >    
 >    ~~~
 >    Submitted batch job 4632558
@@ -483,147 +548,80 @@ Best practices have been explained in detail in our [OpenFOAM documentation](htt
 
 <p>&nbsp;</p>
 
-## 9. The fileHandler collated option
-
-The default for common OpenFOAM installations is to output results of a decomposed simulation into many processor* subdirectories. Indeed, as many as decomposed subdomains. So, for example, in a common installation you would have finished with the following directories in your caseDir:
-
-```bash
-0  0.orig  Allrun  constant  logs  processor0  processor1  processor2  processor3  system
-```
-
-So, the default fileHandler for common installations is **uncollated**. That is not a problem for a small case like this tutorial, but it is indeed a problem when the decomposition requires hundreds of subdomains. Then if results are saved very frequently, and the user needs to keep all their output for analysis (purgeWrite=0), then they can end with millions of files. And the problem increases if the user needs to analyse and keep results for multiple cases.
-
-The existence of millions of files is already a problem for the user, but is also a problem for all our user base, because the file system manager gets overloaded and the performance of the file system (which is shared) degrades.
-
-Because of that, for versions greater or equal to OpenFOAM-6 and OpenFOAM-v1812, the use "**fileHandler collated**" is a required policy in our systems. (Older versions do not have that option or do not perform well.) The collated option allows result files to be merged into a reduce number of directories. (We have set that in point 5.B (above) within the controlDict, although for Pawsey containers and system-wide installations, that option is already set by default. We decided to explicitly include it in the controlDict as a reminder to our users.)
-
-Together with the setting of the collated option, the merging of results is controlled by the **ioRanks** option. In this casem the option is being set through the **FOAM_IORANKS** variable. In the scripts we have:
-
-```bash
-export FOAM_IORANKS='(0 2 4 6 8)'
-```
-which indicates that decomposed results will be merged every 2 subdomains. [0-1] in the first subdirectory, and [2-3] in the second one. As seen in our case directory:
-
-```bash
-0  0.orig  Allrun  constant  logs  processors4_0-1  processors4_2-3  system
-```
-(The extra numbers in the list does not affect the settings, but strictly speaking '(0 2)' would be enough.) The "export" is needed for the variable to be exported to the srun executions.
-
-If the ioRanks option were not set, then the collated option would merge all the results into a single directory, as this:
-
-```bash
-0  0.orig  Allrun  constant  logs  processors4  system
-```
-
-In production runs, we recommend to group results for each node into a single directory. So, for a case to be solved on Magnus, the recommended setting is:
-
-```bash
-export FOAM_IORANKS='(0 24 48 72 . . . numberOfSubdomains)'
-```
-and for a case to be solved on Zeus:
-
-```bash
-export FOAM_IORANKS='(0 28 56 84 . . . numberOfSubdomains)'
-```
-If the numberOfSubdomains fit in a single node, we recommend to use the plain collated option without ioRanks.
-
-Also, we recommend to decompose your domain so that subdomains count with ~100,000 cells. This rule of thumb gives good performance in most of situations, although users need to verify the best settings for their own cases and solvers.
-
-For more information, please read our documentation [OpenFOAM documentation](https://support.pawsey.org.au/documentation/display/US/OpenFOAM).
-
-<p>&nbsp;</p>
-<p>&nbsp;</p>
-<p>&nbsp;</p>
-<p>&nbsp;</p>
-<p>&nbsp;</p>
-<p>&nbsp;</p>
-<p>&nbsp;</p>
-<p>&nbsp;</p>
-<p>&nbsp;</p>
-<p>&nbsp;</p>
-
-## 10. Submit the rest of the jobs (solver and reconstruction)
-
-#### 10.D Execute the solver
-
-Take a look into the script:
-
-```bash
-$ cd $scriptsDir
-$ less D.runFoam.sh
-.
-.
-.
-q
-```
-
-Submit the job:
-
-```bash
-$ cd $scriptsDir
-$ sbatch --reservation=$myReservation D.runFoam.sh
-Submitted batch job 4619611
-$ squeue -u $USER
-JOBID    USER     ACCOUNT     PARTITION            NAME EXEC_HOST ST     REASON   START_TIME     END_TIME  TIME_LEFT NODES   PRIORITY
-4619611  espinosa pawsey0001  workq        D.runFoam.sh      z064  R       None     15:19:52     15:29:52       9:50     1      75185
-$ tail -f slurm-4619611.out
-.
-.
-.
-<ctrl-c>
-```
-
-Check if results exist:
-
-```bash
-$ cd $caseDir
-$ ls
-0  0.orig  Allrun  constant  logs  processors4_0-1  processors4_2-3  system
-$ ls processors4_0-1/
-0  13.2  13.4  13.6  13.8  14  14.2  14.4  14.6  14.8  15  constant
-```
-
-#### 10.E Perform reconstruction
-
-Take a look into the script:
-
-```bash
-$ cd $scriptsDir
-$ less E.reconstructFoam.sh
-.
-.
-.
-q
-```
-
-Submit the job:
-
-```bash
-$ cd $scriptsDir
-$ sbatch --reservation=$myReservation E.reconstructFoam.sh
-Submitted batch job 4619652 on cluster zeus
-```
-The reconstructed directory, which should be the latest time existing in the results should now be in the working directory:
-
-```bash
-$ cd $caseDir
-$ ls
-0  0.orig  15  Allrun  constant  logs  processors4_0-1  processors4_2-3  system
-```
+> ## X. Information about the `fileHandler collated` option
+> 
+> The default for common OpenFOAM installations outside Pawsey is to output results into many processor* subdirectories. 
+> Indeed, as many as decomposed subdomains. So, for example, in a common installation you would have finished with the following directories in your `$caseDir`:
+> 
+> ~~~
+> 0  0.orig  Allrun  constant  logs  processor0  processor1  processor2  processor3  system
+> ~~~
+> {: .output}
+> 
+> So, the default fileHandler for common installations is **uncollated**.
+> That is not a problem for a small case like this tutorial, but it is indeed a problem when the decomposition requires hundreds of subdomains.
+> Then if results are saved very frequently, and the user needs to keep all their output for analysis (purgeWrite=0), they can end with millions of files.
+> And the problem increases if the user needs to analyse and keep results for multiple cases.
+> 
+> The existence of millions of files is already a problem for the user, but is also a problem for all our user base, because the file system manager gets overloaded and the performance of the file system (which is shared) degrades.
+> 
+> Because of that, for versions greater-than or equal-to OpenFOAM-6 and OpenFOAM-v1812, the use "**fileHandler collated**" is a required policy in our systems.
+> (Older versions do not have that option or do not perform well.)
+> The collated option allows result files to be merged into a reduce number of directories.
+> (We have set that in point B.adaptCase (above) within the controlDict.
+> Pawsey containers and system-wide installations have the collated option set by default.
+> Nevertheless, we decided to explicitly include it in the controlDict as a reminder to our users.)
+> 
+> Together with the setting of the collated option, the merging of results is controlled by the **ioRanks** option.
+> In this case, the option is being set through the **FOAM_IORANKS** environment variable.
+>
+> In the scripts we have:
+> 
+> ~~~
+> export FOAM_IORANKS='(0 2 4 6 8)'
+> ~~~
+> {: .bash}
+> which indicates that decomposed results will be merged every 2 subdomains. [0-1] in the first subdirectory, and [2-3] in the second one. As seen in our case directory:
+> 
+> ~~~
+> 0  0.orig  Allrun  constant  logs  processors4_0-1  processors4_2-3  system
+> ~~~
+> {: .output}
+> (The extra numbers in the list does not affect the settings, but strictly speaking '(0 2)' would be enough.) The "export" is needed for the variable to be exported to the srun executions.
+> 
+> If the ioRanks option were not set, then the collated option alone would have merged all the results into a single directory, as this:
+> 
+> ~~~
+> 0  0.orig  Allrun  constant  logs  processors4  system
+> ~~~
+> {: .output}
+> 
+> In production runs, we recommend to group results for each node into a single directory. So, for a case to be solved on Magnus, the recommended setting is:
+> 
+> ~~~
+> export FOAM_IORANKS='(0 24 48 72 . . . numberOfSubdomains)'
+> ~~~
+> {: .bash}
+>
+> and for a case to be solved on Zeus:
+> 
+> ~~~
+> export FOAM_IORANKS='(0 28 56 84 . . . numberOfSubdomains)'
+> ~~~
+> {: .bash}
+>
+> If the numberOfSubdomains fit in a single node, we recommend to use the plain collated option alone without ioRanks.
+> 
+> Also, we recommend to decompose your domain so that subdomains count with ~100,000 cells. This rule of thumb gives good performance in most of situations, although users need to verify the best settings for their own cases and solvers.
+> 
+{: .solution}
 
 <p>&nbsp;</p>
-<p>&nbsp;</p>
-<p>&nbsp;</p>
-<p>&nbsp;</p>
-<p>&nbsp;</p>
-<p>&nbsp;</p>
-<p>&nbsp;</p>
-<p>&nbsp;</p>
-<p>&nbsp;</p>
-<p>&nbsp;</p>
 
-## 11. Further notes on how to use OpenFOAM and OpenFOAM containers at Pawsey
+## Z. Further notes on how to use OpenFOAM and OpenFOAM containers at Pawsey
 
 The usage of OpenFOAM and OpenFOAM containers at Pawsey has already been described in our documentation: [OpenFOAM documentation at Pawsey](https://support.pawsey.org.au/documentation/display/US/OpenFOAM)
 
 and in a technical newsletter note: [https://support.pawsey.org.au/documentation/display/US/Pawsey+Technical+Newsletter+2020-04](https://support.pawsey.org.au/documentation/display/US/Pawsey+Technical+Newsletter+2020-04) 
+
+<p>&nbsp;</p>
