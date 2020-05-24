@@ -1,7 +1,7 @@
 ---
 title: "Basic information for OpenFOAM containers at Pawsey"
 teaching: 10
-exercises: 5
+exercises: 05
 questions:
 - Basic information for OpenFOAM containers at Pawsey
 objectives:

@@ -1,6 +1,6 @@
 ---
 title: "Executing the full workflow of a case"
-teaching: 15
+teaching: 30
 exercises: 30
 questions:
 - How can I use OpenFOAM containers at Pawsey supercomputers?
@@ -26,7 +26,7 @@ zeus-1:*-v1912> ls
 {: .bash}
 
 ~~~
-A.extractTutorial.sh  B.adaptCase.sh  C.decomposeFoam.sh  D.runFoam.sh  E.reconstructFoam.sh
+A.extractTutorial.sh  B.adaptCase.sh  C.decomposeFoam.sh  D.runFoam.sh  E.reconstructFoam.sh  run
 ~~~
 {: .output}
 
@@ -91,7 +91,7 @@ At the end we'll discuss the main instructions in the scripts.
 > tutorialName=channel395
 > tutorialCase=$tutorialAppDir/$tutorialName
 > 
-> baseWorkingDir=./run
+> baseWorkingDir=$SLURM_SUBMIT_DIR/run
 > if ! [ -d $baseWorkingDir ]; then
 >     echo "Creating baseWorkingDir=$baseWorkingDir"
 > mkdir -p $baseWorkingDir
@@ -114,10 +114,10 @@ At the end we'll discuss the main instructions in the scripts.
 {: .solution}
 
 > ## Steps for dealing with the extraction of the "channel395" case:
-> 1. Submit the job (no need for reservation as the script uses the `debugq` partition)
+> 1. Submit the job (no need for reservation as the script uses the `copyq` partition)
 > 
 >    ~~~
->    zeus-1:*-v1912> sbatch --reservation=$myReservation A.extractTutorial.sh 
+>    zeus-1:*-v1912> sbatch A.extractTutorial.sh 
 >    ~~~
 >    {: .bash}
 > 
@@ -185,7 +185,7 @@ Best practices have been explained in detail in our [OpenFOAM documentation](htt
 > {: .bash}
 {: .solution}
 
-> ## Steps for dealing with the adaptation of the case
+> ## Initial steps for dealing with the adaptation of the case
 >
 > 1. Submit the adaptation script
 > 
@@ -200,7 +200,7 @@ Best practices have been explained in detail in our [OpenFOAM documentation](htt
 >    {: .output}
 {: .solution} 
 
-> Final step. Check the adapted settings
+> ## Final step: Check the adapted settings
 >    ~~~ 
 >    zeus-1:*-v1912> cd run/channel395
 >    zeus-1:channel395> ls
@@ -255,7 +255,7 @@ Best practices have been explained in detail in our [OpenFOAM documentation](htt
 >    >    }
 >    >    ~~~
 >    {: .solution}
-{: .challenge}
+{: .discussion}
 
 <p>&nbsp;</p>
 
@@ -291,7 +291,7 @@ Best practices have been explained in detail in our [OpenFOAM documentation](htt
 >
 > ~~~
 > #3. Defining the case directory
-> baseWorkingDir=./run
+> baseWorkingDir=$SLURM_SUBMIT_DIR/run
 > caseName=channel395
 > caseDir=$baseWorkingDir/$caseName
 > ~~~
@@ -368,7 +368,7 @@ Best practices have been explained in detail in our [OpenFOAM documentation](htt
 > 3. You should also check for success/errors in:
 >    -  the slurm output file: `slurm-<SLURM_JOBID>.out`
 >    -  the log files created when executing the OpenFOAM tools in: `./run/channel395/logs/pre/`
-{: .challenge}
+{: .discussion}
 
 <p>&nbsp;</p>
 
