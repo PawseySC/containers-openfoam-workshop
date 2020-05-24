@@ -3,12 +3,14 @@ title: "Compile and execute user's own tools"
 teaching: 30
 exercises: 30
 questions:
-questions:
 - How can users execute tools that are not initially installed inside the container?
 objectives:
 - Compile and execute user's own tools with the compiler and OpenFOAM installation of an existing container
 keypoints:
-- Hola
+- Define a host directory that will play the role of `WM_PROJECT_USER_DIR`
+- For example, `projectUserDir=./anyDirectory`
+- Then bind that directory to the path defined inside for `WM_PROJECT_USER_DIR`
+- For this exercise, `singularity exec -B $projectUserDir:/home/ofuser/OpenFOAM/ofuser-v1912 $theImage <mySolver> <myOptions>`
 ---
 
 One of the attractive features of OpenFOAM is the possibility of building your own tools/solvers and execute them with the whole OpenFOAM environment.

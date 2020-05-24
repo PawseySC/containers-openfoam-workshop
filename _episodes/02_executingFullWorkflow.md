@@ -10,7 +10,7 @@ keypoints:
 - Use `singularity exec $image <tool> <tool-options>` for using containerised OpenFOAM tools
 - Pre- and Post-Processing single threaded tools should be executed on Zeus
 - Always use the recommended Pawsey Best Practices for OpenFOAM
-- Most recent versions of OpenFOAM are not installed system-wide, but are available via singularity containers
+- Most recent versions of OpenFOAM are not installed system-wide at Pawsey's Supercomputers, but are available via singularity containers
 ---
 
 Typical steps for analysing a problem with OpenFOAM include the setup of initial conditions, mesh definition and solver parameters. And, of course, the use of pre-processing, solving and post-processing OpenFOAM tools.
