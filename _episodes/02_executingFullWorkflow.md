@@ -383,6 +383,25 @@ Best practices have been explained in detail in our [OpenFOAM documentation](htt
 > {: .bash}
 > 
 > ~~~
+> #5. Reading OpenFOAM decomposeParDict settings
+> foam_numberOfSubdomains=$(grep "^numberOfSubdomains" ./system/decomposeParDict | tr -dc '0-9')
+> ~~~
+> {: .bash}
+> 
+> ~~~
+> #7. Checking if the number of tasks coincide with the number of subdomains
+> if [[ $foam_numberOfSubdomains -ne $SLURM_NTASKS ]]; then
+>    echo "foam_numberOfSubdomains read from ./system/decomposeParDict is $foam_numberOfSubdomains"
+>    echo "and"
+>    echo "SLURM_NTASKS in this job is $SLURM_NTASKS"
+>    echo "These should be the same"
+>    echo "Therefore, exiting this job"
+>    echo "Exiting"; exit 1
+> fi
+> ~~~
+> {: .bash}
+>
+> ~~~
 > #8. Defining OpenFOAM controlDict settings for this run
 > foam_startFrom=startTime
 > #foam_startFrom=latestTime

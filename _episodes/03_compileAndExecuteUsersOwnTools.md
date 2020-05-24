@@ -78,6 +78,7 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 >    echo "The directory $projectUserDir/applications already exists."
 > fi
 > ~~~
+> {: .bash}
 > 
 > ~~~
 > #4. Copy the solver from the inside of the container to the local file system
@@ -90,6 +91,7 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 >    echo "The directory $projectUserDir/applications/$solverNew already exists, no new copy has been performed"
 > fi
 > ~~~
+> {: .bash}
 > 
 > ~~~
 > #5. Going into the new solver directory
@@ -101,12 +103,14 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 >    echo "Exiting"; exit 1
 > fi
 > ~~~
+> {: .bash}
 > 
 > ~~~
 > #6. Remove not needed stuff
 > echo "Removing not needed stuff"
 > rm -rf *DyMFoam SRFP* *.dep
 > ~~~
+> {: .bash}
 > 
 > ~~~
 > #7. Rename the source files and replace words inside for the new solver to be: "myPimpleFoam"
@@ -115,6 +119,7 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 > sed -i 's,pimpleFoam,myPimpleFoam,g' *.C
 > sed -i 's,pimpleFoam,myPimpleFoam,g' *.H
 > ~~~
+> {: .bash}
 > 
 > ~~~
 > #8. Modify files inside the Make directory to create the new executable in $FOAM_USER_APPBIN
@@ -714,12 +719,31 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 <p>&nbsp;</p>
 
 ## F. Executing the **NEW** solver **"myPimpleFoam"**
-> ## The `F.runFoam` script (main points to be discussed):
+> ## The `F.runFoam.sh` script (main points to be discussed):
 > ~~~
 > #SBATCH --ntasks=4
 > #SBATCH --mem=16G
 > #SBATCH --ntasks-per-node=28
 > #SBATCH --cluster=zeus
+> ~~~
+> {: .bash}
+
+> ~~~
+> #5. Reading OpenFOAM decomposeParDict settings
+> foam_numberOfSubdomains=$(grep "^numberOfSubdomains" ./system/decomposeParDict | tr -dc '0-9')
+> ~~~
+> {: .bash}
+> 
+> ~~~
+> #7. Checking if the number of tasks coincide with the number of subdomains
+> if [[ $foam_numberOfSubdomains -ne $SLURM_NTASKS ]]; then
+>    echo "foam_numberOfSubdomains read from ./system/decomposeParDict is $foam_numberOfSubdomains"
+>    echo "and"
+>    echo "SLURM_NTASKS in this job is $SLURM_NTASKS"
+>    echo "These should be the same"
+>    echo "Therefore, exiting this job"
+>    echo "Exiting"; exit 1
+> fi
 > ~~~
 > {: .bash}
 > 
