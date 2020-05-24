@@ -56,7 +56,7 @@ At the end we'll discuss the main instructions in the scripts.
 
 <p>&nbsp;</p>
 
-## A. Extraction of the tutorial: channel395
+## A. Extraction of the tutorial: channel395 **- [Pre-Executed]**
    
 > ## The `A.extractTutorial.sh` script (main sections to be discussed):
 >
@@ -185,7 +185,7 @@ Best practices have been explained in detail in our [OpenFOAM documentation](htt
 > {: .bash}
 {: .solution}
 
-> ## Initial steps for dealing with the adaptation of the case
+> ## Initial steps for dealing with the adaptation of the case **- [Pre-Executed]**
 >
 > 1. Submit the adaptation script
 > 

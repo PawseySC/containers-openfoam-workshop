@@ -62,7 +62,7 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 
 <p>&nbsp;</p>
 
-## A. Cloning internal solver "pimpleFoam" into our own solver "myPimpleFoam" **- [Pre-Executed]**
+## A. Cloning internal solver "pimpleFoam" into our own solver "myPimpleFoam"
    
 > ## The `A.cloneMyPimpleFoam.sh` script (main sections to be discussed):
 >
@@ -124,7 +124,7 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 > 
 {: .solution}
 
-> ## Initial steps for dealing with the cloning of the solver into "myPimpleFoam"
+> ## Initial steps for dealing with the cloning of the solver into "myPimpleFoam" **- [Pre-Executed]**
 > 1. Submit the job (no need for reservation as the script uses the `copyq` partition)
 > 
 >    ~~~
