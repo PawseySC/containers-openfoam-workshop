@@ -7,21 +7,33 @@ questions:
 objectives:
 - Use OverlayFS for saving results and reduce the number of files in the host file system
 keypoints:
-- Hola
+- Singularity can deal with an OverlayFS, but only one OverlayFS can be mounted per container instance
+- As each core writes results to a single `processorN`, this works for saving results inside each `overlayN`
+- Unfortunately, the `reconstructPar` tool cannot read results from several `overlayN` files. Therefore, results must be taken out before reconstruction.
+- Last point may seem like a killer, but extraction and reconstruction may be performed in small batches avoiding the appearence of many files at the same time for the Meta Data Server.
 ---
 
 Due to multiple factors, users may have the need to keep using old versions of OpenFOAM.
+
 Versions of OpenFOAM lower-than OpenFOAM-6 and OpenFOAM-v1812 do not count with a functional `fileHandler collated` + `ioRanks` option.
 Therefore, there is not other option but the standard `uncollated` fileHandling.
-And, as we have noticed previously, this standard fileHandling has the danger of producing a large amount of files.
+
+As metioned previously, standard uncollated fileHandling has the danger of producing a large amount of files.
 It is not uncommon for some of our users to reach the order of millions of files.
 
 When users hit the presence of a large amount of files, they start facing problems for handling them.
-But that is not the only problem. Another big problem is the overload of the shared file systems, which affect the performance of the supercomputers themselves, affecting all of our user base.
 
-One option to reduce the amount of files that the system observes is the use of virtual file systems. These virtual file systems are indeed a single file from our metadata server point of view. But the virtual file system is able to handle thousands of files at the interior.
+But the main larger problem is the **overload of the metadata server** of our shared file systems, which affect the performance of the supercomputers themselves, affecting all of our user base.
 
-Here we exemplify the use of OverlayFS virtual file systems (that singularity containers can read and write) to save results inside. In this way, the amount of files observed by our metadata server is reduced, while the user expands their capability of saving many result files (even in the order of millions). The example is managed with a series of scripts:
+Currently, Pawsey restricts the quota for the users to a maximum of 1 million files/directories (ioNodes). But many still have the need for a larger quota.
+
+One option to reduce the amount of files that the system observes is the use of **virtual file systems**.
+
+These virtual file systems are indeed a single file from the metadata server point of view. But the virtual file system is able to handle thousands of files at the interior.
+
+Here we exemplify the use of OverlayFS virtual file systems (that singularity containers can read and write) to save OpenFOAM results inside.
+
+In this way, the amount of files observed by our metadata server is reduced, while the user expands their capability of saving many result files (even in the order of millions). The example is managed with a series of scripts:
 
 - cd into the directory where the provided scripts are. In this case we'll use OpenFOAM-2.4.x.
 
@@ -34,11 +46,11 @@ zeus-1:*-2.4.x> ls
 
 ~~~
 A.extractAndAdaptTutorial.sh  caseSettingsFoam.sh      D.runFoam.sh                 imageSettingsSingularity.sh
-B.decomposeFoam.sh            C.prepareOverlayFoam.sh  E.reconstructFromOverlay.sh  run
+B.decomposeFoam.sh            C.setupOverlayFoam.sh    E.reconstructFromOverlay.sh  run
 ~~~
 {: .output}
 
-Quickly read one of the scripts, for example `D.runFoam.sh`.
+Quickly read one of the scripts, for example `E.reconstructFromOverlay.sh`.
 We recommed the following text readers:
 - `view` (navigate with up and down arrows, use `:q` or `:q!` to quit)
 - `less` (navigate with up and down arrows, use `q` to quit) (this one does not have syntax highlight)
@@ -57,9 +69,9 @@ In the following sections, there are instructions for submitting these job scrip
 
 Very similar submission steps are executed in each of the stages.
 So, in order to avoid too much repetition and save time for important discussions,
-the script `A.extractAndAdaptTutorial.sh` has already been executed for you.
+the section "A. Extract and adapt tutorial" has already been executed for you.
 
-We'll start with a detailed explanation at section "B" but concentrate our efforts on section "C. Prepare OverlayFS"
+We'll start our explanation at section "B.Decomposition" but concentrate our efforts on section "C. Setup OverlayFS".
 Users will then move to section D. and proceed by themselves afterwards.
 
 At the end, we'll discuss the main instructions within the scripts and the whole process.
@@ -76,6 +88,48 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 > source $SLURM_SUBMIT_DIR/caseSettingsFoam.sh
 > ~~~
 > {: .bash}
+>
+> > ## The `imageSettingsSingularity.sh` script (main sections to be discussed):
+> >
+> > ~~~
+> > #Module environment
+> > module load singularity
+> > ~~~
+> > {: .bash}
+> >
+> > ~~~
+> > #Defining the container to be used
+> > theRepo=/group/singularity/pawseyRepository/OpenFOAM
+> > theContainerBaseName=openfoam
+> > theVersion=2.4.x
+> > theProvider=pawsey
+> > theImage=$theRepo/$theContainerBaseName-$theVersion-$theProvider.sif
+> > ~~~
+> > {: .bash}
+> {: .solution}
+>
+> > ## The `caseSettingsFoam.sh` script (main sections to be discussed):
+> > 
+> > ~~~
+> > #Choosing the tutorial case
+> > tutorialAppDir=incompressible/pimpleFoam
+> > tutorialName=channel395
+> > tutorialCase=$tutorialAppDir/$tutorialName
+> > ~~~
+> > {: .bash}
+> > 
+> > ~~~
+> > #Choosing the working directory for the case to solve
+> > baseWorkingDir=$SLURM_SUBMIT_DIR/run
+> > if ! [ -d $baseWorkingDir ]; then
+> >     echo "Creating baseWorkingDir=$baseWorkingDir"
+> >     mkdir -p $baseWorkingDir
+> > fi
+> > caseName=$tutorialName
+> > caseDir=$baseWorkingDir/$caseName
+> > ~~~
+> > {: .bash}
+> {: .solution}
 {: .solution}
 
 > ## Steps for dealing with the extraction and adaptation of the case to be solved
@@ -103,7 +157,7 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 >    ~~~
 >    {: .output}
 >
-> 3.  Read the `controlDict` dictionary:
+> 3. Read the `controlDict` dictionary:
 > 
 >    ~~~
 >    zeus-1:*-2.4.x> view ./run/channel395/system/controlDict
@@ -158,24 +212,9 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 > > theImage=$theRepo/$theContainerBaseName-$theVersion-$theProvider.sif
 > > ~~~
 > > {: .bash}
-> >
-> > ~~~
-> > #Defining settings for the OverlayFS
-> > overlaySizeGb=1
-> > ~~~
-> > {: .bash}
 > {: .solution}
 >
 > > ## The `caseSettingsFoam.sh` script (main sections to be discussed):
-> > 
-> > ~~~
-> > #Choosing the tutorial case
-> > tutorialAppDir=incompressible/pimpleFoam
-> > tutorialName=channel395
-> > tutorialCase=$tutorialAppDir/$tutorialName
-> > ~~~
-> > {: .bash}
-> > 
 > > ~~~
 > > #Choosing the working directory for the case to solve
 > > baseWorkingDir=$SLURM_SUBMIT_DIR/run
@@ -185,14 +224,6 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 > > fi
 > > caseName=$tutorialName
 > > caseDir=$baseWorkingDir/$caseName
-> > ~~~
-> > {: .bash}
-> > 
-> > ~~~
-> > #Defining the name of the directory inside the overlay* files at which results will be saved
-> > baseInsideDir=/overlayOpenFOAM/run
-> > insideName=$caseName
-> > insideDir=$baseInsideDir/$insideName
 > > ~~~
 > > {: .bash}
 > {: .solution} 
@@ -248,6 +279,8 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 >    0  constant
 >    ~~~
 >    {: .output}
+>    - Note that one `processorN` directory was created per `numberOfSubdomains` (The number of subdomains is set in the `system/decomposeParDict` dictionary)
+>    - Also note that this tutorial uses 5 subdomains (and 5 cores when executing the solver (below))
 >
 > 3. You should also check for success/errors in:
 >    -  the slurm output file: `slurm-<SLURM_JOBID>.out`
@@ -256,8 +289,61 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 
 <p>&nbsp;</p>
 
-## C. Preparing the overlayFS setup
-> ## The `C.prepareOverlayFoam.sh` script (main points to be discussed):
+## C. Setup the overlayFS
+> ## The `C.setupOverlayFoam.sh` script (main points to be discussed):
+> ~~~
+> #1. Loading the container settings, case settings and auxiliary functions (order is important)
+> source $SLURM_SUBMIT_DIR/imageSettingsSingularity.sh
+> source $SLURM_SUBMIT_DIR/caseSettingsFoam.sh
+> ~~~
+> {: .bash}
+>
+> > ## The `imageSettingsSingularity.sh` script (main sections to be discussed):
+> > ~~~
+> > #Module environment
+> > module load singularity
+> > ~~~
+> > {: .bash}
+> >
+> > ~~~
+> > #Defining the container to be used
+> > theRepo=/group/singularity/pawseyRepository/OpenFOAM
+> > theContainerBaseName=openfoam
+> > theVersion=2.4.x
+> > theProvider=pawsey
+> > theImage=$theRepo/$theContainerBaseName-$theVersion-$theProvider.sif
+> > ~~~
+> > {: .bash}
+> >
+> > ~~~
+> > #Defining settings for the OverlayFS
+> > overlaySizeGb=1
+> > ~~~
+> > {: .bash}
+> {: .solution}
+>
+> > ## The `caseSettingsFoam.sh` script (main sections to be discussed):
+> > ~~~
+> > #Choosing the working directory for the case to solve
+> > baseWorkingDir=$SLURM_SUBMIT_DIR/run
+> > if ! [ -d $baseWorkingDir ]; then
+> >     echo "Creating baseWorkingDir=$baseWorkingDir"
+> >     mkdir -p $baseWorkingDir
+> > fi
+> > caseName=$tutorialName
+> > caseDir=$baseWorkingDir/$caseName
+> > ~~~
+> > {: .bash}
+> > 
+> > ~~~
+> > #Defining the name of the directory inside the overlay* files at which results will be saved
+> > baseInsideDir=/overlayOpenFOAM/run
+> > insideName=$caseName
+> > insideDir=$baseInsideDir/$insideName
+> > ~~~
+> > {: .bash}
+> {: .solution}
+>
 > ~~~
 > #4. Rename the processor* directories into bak.processor*
 > #(OpenFOAM wont be able to see these directories)
@@ -359,6 +445,8 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 >    0.org  bak.processor0  bak.processor2  bak.processor4  logs      overlay1  overlay3  system
 >    ~~~
 >    {: .output}
+>    - There are now 5 `overlayN` files
+>    - All `processorN` directories have been renamed to `bak.processorN`
 >
 > 3. Explore the content of one of the overlay files:
 >
@@ -366,7 +454,7 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 >    zeus-1:channel395> module load singularity
 >    zeus-1:channel395> theImage=/group/singularity/pawseyRepository/OpenFOAM/openfoam-2.4.x-pawsey.sif
 >    zeus-1:channel395> insideDir=/overlayOpenFOAM/run/channel395
->    zeus-1:channel395> singularity exec --overlay overlay1 $theImage ls -lat /overlayOpenFOAM/run/channel395/processor1/
+>    zeus-1:channel395> singularity exec --overlay overlay1 $theImage ls -lat $insideDir/processor1/
 >    ~~~
 >    {: .bash}
 >
@@ -403,6 +491,7 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 > #(Initially these links will appear broken as they are pointing towards the interior of the overlay* files.
 > # They will only be recognized within the containers)
 > echo "Creating the soft links to point towards the interior of the overlay files"
+>
 > for ii in $(seq 0 $(( foam_numberOfSubdomains -1 ))); do
 >    echo "Linking to $insideDir/processor${ii} in overlay${ii}"
 >    srun -n 1 -N 1 --mem-per-cpu=0 --exclusive ln -s $insideDir/processor${ii} processor${ii} &
@@ -418,6 +507,9 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 > echo "Execution finished"
 > ~~~
 > {: .bash}
+> - VERY IMPORTANT: Note that the singularity command is called inside a `bash -c` command
+> - This is the way we allow each MPI task to pick a different overlay file through the `SLURM_PROCID` variable
+> - Here, `theImage` is not a global environment variable, so we use the shift to a `"..."` section to evaluate the variable in the host shell
 > 
 > ~~~
 > #9. List the existing times inside the overlays 
@@ -433,6 +525,7 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 >    ~~~
 >    zeus-1:*-2.4.x> sbatch --reservation=$myReservation D.runFoam.sh 
 >    ~~~
+>    {: .bash}
 >    
 >    ~~~
 >    Submitted batch job 4632685 on cluster zeus
@@ -482,13 +575,60 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 >    ~~~
 >    {: .output}
 > 
-> 3. Check that the solver gave some results by listing the interior of an overlay file:
-> 
+> 3. You can see in the case directory that now there are several `processorN` **soft links**
 >    ~~~
 >    zeus-1:*-2.4.x> cd run/channel395
+>    zeus-1:channel395> ls -lat 
+>    ~~~
+>    {: .bash}
+>
+>    ~~~
+>    total 5242952
+>    -rw-rw----+  1 espinosa pawsey0001 1073741824 May 25 14:55 overlay0
+>    -rw-rw----+  1 espinosa pawsey0001 1073741824 May 25 14:55 overlay1
+>    -rw-rw----+  1 espinosa pawsey0001 1073741824 May 25 14:55 overlay2
+>    -rw-rw----+  1 espinosa pawsey0001 1073741824 May 25 14:55 overlay3
+>    -rw-rw----+  1 espinosa pawsey0001 1073741824 May 25 14:55 overlay4
+>    drwxr-s---+ 12 espinosa pawsey0001       4096 May 25 14:55 .
+>    drwxrws---+  4 espinosa pawsey0001       4096 May 25 14:55 logs
+>    lrwxrwxrwx   1 espinosa pawsey0001         42 May 25 14:55 processor0 -> /overlayOpenFOAM/run/channel395/processor0
+>    lrwxrwxrwx   1 espinosa pawsey0001         42 May 25 14:55 processor1 -> /overlayOpenFOAM/run/channel395/processor1
+>    lrwxrwxrwx   1 espinosa pawsey0001         42 May 25 14:55 processor2 -> /overlayOpenFOAM/run/channel395/processor2
+>    lrwxrwxrwx   1 espinosa pawsey0001         42 May 25 14:55 processor3 -> /overlayOpenFOAM/run/channel395/processor3
+>    lrwxrwxrwx   1 espinosa pawsey0001         42 May 25 14:55 processor4 -> /overlayOpenFOAM/run/channel395/processor4
+>    drwxr-s---+  2 espinosa pawsey0001       4096 May 25 14:55 system
+>    drwxrws---+  4 espinosa pawsey0001       4096 May 25 14:53 bak.processor0
+>    drwxrws---+  4 espinosa pawsey0001       4096 May 25 14:53 bak.processor1
+>    drwxrws---+  4 espinosa pawsey0001       4096 May 25 14:53 bak.processor2
+>    drwxrws---+  4 espinosa pawsey0001       4096 May 25 14:53 bak.processor3
+>    drwxrws---+  4 espinosa pawsey0001       4096 May 25 14:53 bak.processor4
+>    drwxr-s---+  2 espinosa pawsey0001       4096 May 25 14:53 0
+>    drwxr-s---+  3 espinosa pawsey0001       4096 May 25 14:53 constant
+>    drwxrws---+  3 espinosa pawsey0001       4096 May 25 14:03 ..
+>    drwxr-s---+  2 espinosa pawsey0001       4096 May 25 14:03 0.org
+>    -rwxrwx---+  1 espinosa pawsey0001        483 May 25 14:03 Allrun
+>    ~~~
+>    {: .output}
+>    - The `processorN` soft links are pointing to the directories inside the `overlayN` files
+>
+>    
+>    ~~~
+>    zeus-1:channel395> ls -la processor1/ 
+>    ~~~
+>    {: .bash}
+>
+>    ~~~
+>    ls: cannot access 'processor1/': No such file or directory
+>    ~~~
+>    {: .output}
+>    - The host shell cannot read inside the overlayN files, and that is why the links appear broken 
+>
+> 4. Check that the solver gave some results by listing the interior of an overlay file:
+> 
+>    ~~~
 >    zeus-1:channel395> module load singularity
 >    zeus-1:channel395> theImage=/group/singularity/pawseyRepository/OpenFOAM/openfoam-2.4.x-pawsey.sif
->    zeus-1:channel395> singularity exec --overlay overlay1 $theImage ls -lat processor1/
+>    zeus-1:channel395> singularity exec --overlay overlay1 $theImage ls processor1/
 >    ~~~
 >    {: .bash}
 > 
@@ -499,7 +639,7 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 >    ~~~
 >    {: .output}
 >
-> 4. You should also check for success/errors in:
+> 5. You should also check for success/errors in:
 >    -  the slurm output file: `slurm-<SLURM_JOBID>.out`
 >    -  the log files created when executing the OpenFOAM tools in: `./run/channel395/logs/run/`
 {: .challenge}
@@ -524,6 +664,7 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 > wait
 > ~~~
 > {: .bash}
+> - To be able to reconstruct a specific time, information needs to be transferred again to the `bak.processorN` directories
 > 
 > ~~~
 > #5. Point the soft links to the bak.processor* directories
@@ -535,6 +676,7 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 > wait
 > ~~~
 > {: .bash}
+> - Now new `processorN` soft links will point towards the `bak.processorN` physical directories
 >
 > ~~~
 > #6. Reconstruct the indicated time
@@ -555,6 +697,7 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 >    ~~~
 >    zeus-1:*-2.4.x> sbatch --reservation=$myReservation E.reconstructFromOverlay.sh 
 >    ~~~
+>    {: .bash}
 >    
 >    ~~~
 >    Submitted batch job 4632899 on cluster zeus
@@ -583,6 +726,8 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 <p>&nbsp;</p>
 
 ## Z. Further notes on how to use OpenFOAM and OpenFOAM containers at Pawsey
+
+More on OverlayFS for singularity in: [https://sylabs.io/guides/3.5/user-guide/persistent_overlays.html](https://sylabs.io/guides/3.5/user-guide/persistent_overlays.html)
 
 The usage of OpenFOAM and OpenFOAM containers at Pawsey has already been described in our documentation: [OpenFOAM documentation at Pawsey](https://support.pawsey.org.au/documentation/display/US/OpenFOAM)
 
