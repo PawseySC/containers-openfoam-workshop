@@ -21,26 +21,29 @@ keypoints:
 > ~~~
 {: .callout}
 
-You can list the content to check which versions we currently maintain:
+> ## A.I List the content of our repository
+> 1. To check which versions we currently maintain:
+> 
+>     ~~~
+>     zeus-1:~> ls -lat /group/singularity/pawseyRepository/OpenFOAM
+>     ~~~
+>     {: .bash}
+>     
+>     ~~~
+>     total 5855948
+>     drwxrwsr-x  2 maali    pawsey0001       4096 May 13 13:59 .
+>     -rwxr-x---+ 1 espinosa pawsey0001 1005383680 May  7 10:24 openfoam-2.4.x-pawsey.sif
+>     -rwxr-xr-x+ 1 espinosa pawsey0001 1330900992 May  6 12:38 openfoam-v1912-pawsey.sif
+>     -rwxr-xr-x+ 1 espinosa pawsey0001 1199386624 May  5 17:14 openfoam-7-pawsey.sif
+>     -rwxr-xr-x  1 espinosa pawsey0001 1308553216 Apr  6 12:23 openfoam-v1812-pawsey.sif
+>     drwxrwsr-x  3 maali    pawsey0001       4096 Mar  3 09:52 ..
+>     -rwxr-xr-x+ 1 espinosa pawsey0001 1152237568 Feb 11 13:27 openfoam-5.x-pawsey.sif
+>     ~~~
+>     {: .output}
+>
+{: .discussion}
 
-~~~
-zeus-1:~> ls -lat /group/singularity/pawseyRepository/OpenFOAM
-~~~
-{: .bash}
-
-~~~
-total 5855948
-drwxrwsr-x  2 maali    pawsey0001       4096 May 13 13:59 .
--rwxr-x---+ 1 espinosa pawsey0001 1005383680 May  7 10:24 openfoam-2.4.x-pawsey.sif
--rwxr-xr-x+ 1 espinosa pawsey0001 1330900992 May  6 12:38 openfoam-v1912-pawsey.sif
--rwxr-xr-x+ 1 espinosa pawsey0001 1199386624 May  5 17:14 openfoam-7-pawsey.sif
--rwxr-xr-x  1 espinosa pawsey0001 1308553216 Apr  6 12:23 openfoam-v1812-pawsey.sif
-drwxrwsr-x  3 maali    pawsey0001       4096 Mar  3 09:52 ..
--rwxr-xr-x+ 1 espinosa pawsey0001 1152237568 Feb 11 13:27 openfoam-5.x-pawsey.sif
-~~~
-{: .output}
-
-> ## A.I Perform a basic mini-test
+> ## A.II Perform a basic mini-test
 > 
 > 1. Load the Singularity module:
 >
@@ -57,7 +60,7 @@ drwxrwsr-x  3 maali    pawsey0001       4096 Mar  3 09:52 ..
 >    {: .bash}
 >
 >  
-> 3. Use singularity to execute the icoFoam solver inside the chose container and call its help message:
+> 3. Use singularity to execute the `icoFoam` solver inside the chose container and call its help message:
 > 
 >    ~~~
 >    zeus-1:~> singularity exec $theImage icoFoam -help
@@ -85,7 +88,7 @@ drwxrwsr-x  3 maali    pawsey0001       4096 Mar  3 09:52 ..
 >    Arch:  LSB;label=32;scalar=64
 >    ~~~
 >    {: .output}
-{: .challenge}
+{: .discussion}
 
 > ## Yes, you can also use your own containers
 > For example, I keep my personal containers in:
