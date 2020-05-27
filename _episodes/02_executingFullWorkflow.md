@@ -7,58 +7,93 @@ questions:
 objectives:
 - Explain how to use typical pre-processing, solving and post-processing OpenFOAM tools
 keypoints:
-- Use `singularity exec $image <tool> <tool-options>` for using containerised OpenFOAM tools
-- Pre- and Post-Processing single threaded tools should be executed on Zeus
+- Use `singularity exec $image <OpenFOAM-Tool> <Tool-Options>` for using containerised OpenFOAM tools
+- Pre- and Post-Processing are usually single threaded and should be executed on Zeus
 - Always use the recommended Pawsey Best Practices for OpenFOAM
 - Most recent versions of OpenFOAM are not installed system-wide at Pawsey's Supercomputers, but are available via singularity containers
 ---
 
-Typical steps for analysing a problem with OpenFOAM include the setup of initial conditions, mesh definition and solver parameters. And, of course, the use of pre-processing, solving and post-processing OpenFOAM tools.
-Here we make use of a series of scripts to cover a typical workflow in full.
+## 0. Introduction
 
-- cd into the directory where the provided scripts are. In this case we'll use OpenFOAM-v1912.
+> ## Typical workflow
+> - Typical steps for analysing a problem with OpenFOAM include:
+>    - The setup of initial conditions, mesh definition and solver parameters
+>    - Use of pre-processing tools (typically decompose the case into several subdomains)
+>    - Execute a solver to obtain a flow field solution
+>    - Use post-processing tools (typically reconstruct the decomposed results into a single domain result)
+>
+{: .prereq}
 
-~~~
-zeus-1:~> cd $MYSCRATCH/pawseyTraining/containers-openfoam-workshop-scripts
-zeus-1:*-scripts> cd 02_executingFullWorkflow/example_OpenFOAM-v1912
-zeus-1:*-v1912> ls
-~~~
-{: .bash}
+> ## 0.I Accessing the scripts for this episode
+> - Here we make use of a series of scripts to cover a typical workflow in full.
+> 
+> 1. cd into the directory where the provided scripts are. In this case we'll use OpenFOAM-v1912.
+> 
+>     ~~~
+>     zeus-1:~> cd $MYSCRATCH/pawseyTraining/containers-openfoam-workshop-scripts
+>     zeus-1:*-scripts> cd 02_executingFullWorkflow/example_OpenFOAM-v1912
+>     zeus-1:*-v1912> ls
+>     ~~~
+>     {: .bash}
+>     
+>     ~~~
+>     A.extractTutorial.sh  B.adaptCase.sh  C.decomposeFoam.sh  D.runFoam.sh  E.reconstructFoam.sh  run
+>     ~~~
+>     {: .output}
+>     
+> 2. Quickly read one of the scripts, for example `C.decomposeFoam.sh`.
+>     We recommed the following text readers:
+>     - `view` (navigate with up and down arrows, use `:q` or `:q!` to quit)
+>     - `less` (navigate with up and down arrows, use `q` to quit) (this one does not have syntax highlight)
+>     - If you are using an editor to read the scripts, DO NOT MODIFY THEM! because your exercise could mess up
+>     - (Try your own settings after succeding with the original exercise, ideally in a copy of the script)
+>     
+>     ~~~
+>     zeus-1:*-v1912> view C.decomposeFoam.sh
+>     ~
+>     ~
+>     ~
+>     :q
+>     zeus-1*-v1912>
+>     ~~~
+>     {: .bash}
+{: .discussion}
 
-~~~
-A.extractTutorial.sh  B.adaptCase.sh  C.decomposeFoam.sh  D.runFoam.sh  E.reconstructFoam.sh  run
-~~~
-{: .output}
+> ## Sections and scripts for this episode
+> - In the following sections, there are instructions for submitting these job scripts for execution in the supercomputer one by one:
+>     - `A.extractTutorial.sh` **(already pre-executed)** is for copying a tutorial from the interior of the container into our local file system
+>     - `B.adaptCase.sh` **(already pre-executed)** is for modifying the tutorial to comply with Pawsey's best practices 
+>     - `C.decomposeFoam.sh` is for executing the mesher and the decomposition of initial condition into subdomains
+>     - `D.runFoam.sh` is for executing the solver
+>     - `E.reconstructFoam.sh` is for executing the reconstruction of the last available result time
+>
+{: .prereq}
 
-Quickly read one of the scripts, for example `C.decomposeFoam.sh`.
-We recommed the following text readers:
-- `view` (navigate with up and down arrows, use `:q` or `:q!` to quit)
-- `less` (navigate with up and down arrows, use `q` to quit) (this one does not have syntax highlight)
-
-~~~
-zeus-1:*-v1912> view C.decomposeFoam.sh
-~
-~
-~
-:q
-zeus-1*-v1912>
-~~~
-{: .bash}
-
-In the following sections, there are instructions for submitting these job scripts for execution in the supercomputer one by one. 
-
-Very similar steps are executed in each of the stages. So, in order to avoid too much repetition and save time for important discussions,
-the first two scripts (A. and B.) have already been executed for you. So we can concentrate in the main three stages of OpenFOAM usage.
-
-We'll start with a detailed explanation at the final step of section "B. Adapt the case". And continue the explanation up to the beginning of section "C. Decomposition". Users will then proceed by themselves afterwards.
-
-At the end we'll discuss the main instructions in the scripts.
+> ## So how will this episode flow?
+> - The first two scripts (A. and B.) have already been executed for you. So we can concentrate in the main three stages of OpenFOAM usage.
+> - We'll start with a detailed explanation at the final step of section "B. Adapt the case".
+> - And continue the explanation up to the beginning of section "C. Decomposition".
+> - Users will then proceed by themselves afterwards.
+> - At the end we'll discuss the main instructions in the scripts and the whole process.
+>
+{: .callout}
 
 <p>&nbsp;</p>
 
 ## A. Extraction of the tutorial: channel395 **- [Pre-Executed]**
    
-> ## The `A.extractTutorial.sh` script (main sections to be discussed):
+> ## Main command in the `A.extractTutorial.sh` script:
+>
+> ~~~
+> tutorialCase=incompressible/pimpleFoam/LES/channel395
+> caseDir=$SLURM_SUBMIT_DIR/run/channel395
+> srun -n 1 -N 1 singularity exec $theImage cp -r /opt/OpenFOAM/OpenFOAM-$theVersion/tutorials/$tutorialCase $caseDir
+> ~~~
+> {: .bash}
+> 
+{: .callout}
+
+> ## Other important parts of the script:
 >
 > ~~~
 > #!/bin/bash -l
@@ -113,7 +148,7 @@ At the end we'll discuss the main instructions in the scripts.
 > 
 {: .solution}
 
-> ## Steps for dealing with the extraction of the "channel395" case:
+> ## A.I Steps for dealing with the extraction of the "channel395" case:
 > 1. Submit the job (no need for reservation as the script uses the `copyq` partition)
 > 
 >    ~~~
@@ -154,14 +189,17 @@ At the end we'll discuss the main instructions in the scripts.
 
 ## B. Adapt the case to your needs (and Pawsey best practices)
 
-This part does not really makes use of any container.
-As the case is already in the host file system, it can be prepared (by editing dictionaries and initial conditions)
-as usual.
+> ## Main command in the `B.adaptCase.sh` script
+>
+> ~~~
+> foam_runTimeModifiable="false"
+> sed -i 's,^runTimeModifiable.*,runTimeModifiable    '"$foam_runTimeModifiable"';,' ./system/controlDict
+> ~~~
+> {: .bash}
+> 
+{: .callout}
 
-In this case, the preparation script will make changes to the `$caseDir/system/controlDict` dictionary to comply with Pawsey's best practices for using OpenFOAM.
-Best practices have been explained in detail in our [OpenFOAM documentation](https://support.pawsey.org.au/documentation/display/US/OpenFOAM)
-
-> ## The `B.adaptCase.sh` script (main sections to be discussed):
+> ## Other important parts of the script:
 >
 > ~~~
 > #5. Defining OpenFOAM controlDict settings for Pawsey Best Practices
@@ -185,7 +223,7 @@ Best practices have been explained in detail in our [OpenFOAM documentation](htt
 > {: .bash}
 {: .solution}
 
-> ## Initial steps for dealing with the adaptation of the case **- [Pre-Executed]**
+> ## B.I Initial steps for dealing with the adaptation of the case **- [Pre-Executed]**
 >
 > 1. Submit the adaptation script
 > 
@@ -200,7 +238,10 @@ Best practices have been explained in detail in our [OpenFOAM documentation](htt
 >    {: .output}
 {: .solution} 
 
-> ## Final step: Check the adapted settings
+> ## B.II Final steps. To check the adapted settings:
+>
+> 1. cd into the case directory:
+>
 >    ~~~ 
 >    zeus-1:*-v1912> cd run/channel395
 >    zeus-1:channel395> ls
@@ -213,10 +254,10 @@ Best practices have been explained in detail in our [OpenFOAM documentation](htt
 >    {: .output}
 >
 >    - Initial conditions are in the subdirectory `0` 
->    - Mesh and fluid prperties definition are under the tree of the subdirectory `constant`
+>    - Mesh and fluid properties definition are under the tree of the subdirectory `constant`
 >    - Solver settings are in the "dictionaries" inside the `system` subdirectory 
 >
->    Read the `controlDict` dictionary:
+> 2. Read the `controlDict` dictionary inside the `system` subdirectory:
 > 
 >    ~~~
 >    zeus-1:channel395> view system/controlDict
@@ -260,7 +301,17 @@ Best practices have been explained in detail in our [OpenFOAM documentation](htt
 <p>&nbsp;</p>
 
 ## C. Decomposition
-> ## The `C.decomposeFoam.sh` script (main points to be discussed):
+
+> ## Main command in the `C.decomposeFoam.sh` script:
+> ~~~
+> srun -n 1 -N 1 singularity exec $theImage decomposePar -cellDist -force
+> ~~~
+> {: .bash}
+>
+{: .callout}
+
+> ## Other important parts of the script:
+>
 > ~~~
 > #!/bin/bash -l
 > #SBATCH --ntasks=1
@@ -330,7 +381,7 @@ Best practices have been explained in detail in our [OpenFOAM documentation](htt
 > {: .bash}
 {: .solution}
 
-> ## Steps for dealing with decomposition:
+> ## C.I Steps for dealing with decomposition:
 > 
 > 1. Submit the decomposition script from the scripts directory (use the reservation for the workshop if available)
 >
@@ -373,7 +424,17 @@ Best practices have been explained in detail in our [OpenFOAM documentation](htt
 <p>&nbsp;</p>
 
 ## D. Executing the solver
-> ## The `D.runFoam` script (main points to be discussed):
+
+> ## Main command in the `D.runFoam.sh` script:
+>
+> ~~~
+> srun -n $SLURM_NTASKS -N $SLURM_JOB_NUM_NODES singularity exec $theImage $of_solver -parallel
+> ~~~
+> {: .bash}
+>
+{: .callout}
+
+> ## Other important parts of the script:
 > ~~~
 > #SBATCH --ntasks=4
 > #SBATCH --mem=16G
@@ -439,19 +500,20 @@ Best practices have been explained in detail in our [OpenFOAM documentation](htt
 > {: .bash}
 {: .solution}
 
-> ## Steps for dealing with the solver
+> ## D.I Steps for dealing with the solver
 > 1. Submit the solver script (from the scripts directory)
 > 
 >    ~~~
 >    zeus-1:*-v1912> sbatch --reservation=$myReservation D.runFoam.sh 
 >    ~~~
+>    {: .bash}
 >    
 >    ~~~
 >    Submitted batch job 4632685 on cluster zeus
 >    ~~~
 >    {: .output}
 > 
-> 2. Check that the solver is running:
+> 2. Check that the status of your job:
 > 
 >    ~~~
 >    zeus-1:*-v1912> squeue -u $USER
@@ -464,7 +526,7 @@ Best practices have been explained in detail in our [OpenFOAM documentation](htt
 >    ~~~
 >    {: .output}
 > 
->    Observe the output of the job with `tail -f` at runtime (use `<Ctrl-C>` to exit the command):
+> 3. Observe the output of the job with `tail -f` at runtime (press `<Ctrl-C>` to exit the command):
 >    ~~~
 >    zeus-1:*-v1912> tail -f slurm-4632685.out
 >    ~~~
@@ -494,7 +556,7 @@ Best practices have been explained in detail in our [OpenFOAM documentation](htt
 >    ~~~
 >    {: .output}
 > 
-> 3. Check that the solver gave some results:
+> 4. Check that the solver gave some results:
 > 
 >    ~~~
 >    zeus-1:*-v1912> ls ./run/channel395/processor*
@@ -510,7 +572,7 @@ Best practices have been explained in detail in our [OpenFOAM documentation](htt
 >    ~~~
 >    {: .output}
 >
-> 4. You should also check for success/errors in:
+> 5. You should also check for success/errors in:
 >    -  the slurm output file: `slurm-<SLURM_JOBID>.out`
 >    -  the log files created when executing the OpenFOAM tools in: `./run/channel395/logs/run/`
 {: .challenge}
@@ -518,7 +580,17 @@ Best practices have been explained in detail in our [OpenFOAM documentation](htt
 <p>&nbsp;</p>
 
 ## E. Reconstruction
-> ## The `E.reconstructFoam.sh` script (main points to be discussed):
+
+> ## Main command in the `E.reconstructFoam.sh` script:
+>
+> ~~~
+> srun -n 1 -N 1 singularity exec $theImage reconstructPar -latestTime
+> ~~~
+> {: .bash}
+>
+{: .callout}
+
+> ## Other important parts of the script:
 > ~~~
 > #SBATCH --ntasks=1
 > #SBATCH --mem=16G
@@ -535,7 +607,7 @@ Best practices have been explained in detail in our [OpenFOAM documentation](htt
 > {: .bash}
 {: .solution}
 
-> ## Steps for dealing with reconstruction:
+> ## E.1 Steps for dealing with reconstruction:
 > 
 > 1. Submit the reconstruction script (from the scripts directory)
 > 
@@ -567,7 +639,9 @@ Best practices have been explained in detail in our [OpenFOAM documentation](htt
 
 <p>&nbsp;</p>
 
-> ## X. Information about the `fileHandler collated` option
+## Y. The collated option
+>
+> ## Information about the `fileHandler collated` option
 > 
 > The default for common OpenFOAM installations outside Pawsey is to output results into many processor* subdirectories. 
 > Indeed, as many as decomposed subdomains. So, for example, in a common installation you would have finished with the following directories in your `$caseDir`:

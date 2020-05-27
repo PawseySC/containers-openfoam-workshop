@@ -1,5 +1,5 @@
 ---
-title: "Use OverlayFS (virtual file system) to reduce the number of result files for old versions of OpenFOAM"
+title: "Use OverlayFS to reduce the number of result files"
 teaching: 30
 exercises: 30
 questions:

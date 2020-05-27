@@ -8,13 +8,12 @@ objectives:
 - Explain about the OpenFOAM containers maintained by Pawsey
 - Explain containers MPI requirements to run at Pawsey
 keypoints:
-- A singularity image is a file that can be stored anywhere
-- We recommend to define a directory for your repository
+- A singularity image is a file that can be stored anywhere, but we reccommend to use some defined "policy" within your group
 - OpenFOAM images maintained by pawsey are stored at `/group/singularity/pawseyRepository/OpenFOAM/`
-- Containers with MPI applications need to be equipped with MPICH for running in Crays
+- Containers with MPI applications need to be equipped with MPICH for running on Crays
 ---
 
-## 1. OpenFOAM containers maintained by Pawsey
+## A. OpenFOAM containers maintained by Pawsey
 
 > ## OpenFOAM Singularity images maintained by Pawsey are in the following directory:
 > ~~~
@@ -41,7 +40,7 @@ drwxrwsr-x  3 maali    pawsey0001       4096 Mar  3 09:52 ..
 ~~~
 {: .output}
 
-> ## Perform a basic test
+> ## A.I Perform a basic mini-test
 > 
 > 1. Load the Singularity module:
 >
@@ -88,11 +87,11 @@ drwxrwsr-x  3 maali    pawsey0001       4096 Mar  3 09:52 ..
 >    {: .output}
 {: .challenge}
 
-> ## Yes, you can have your own containers
-> For example, I have my own containers in:
+> ## Yes, you can also use your own containers
+> For example, I keep my personal containers in:
 >
 > ~~~
-> zeus-1:~> ls /group/pawsey0001/singularity/myRepository/OpenFOAM/
+> zeus-1:~> ls /group/pawsey0001/espinosa/singularity/myRepository/OpenFOAM/
 > openfoam-7-mickey.sif      openfoam-v1912-esi.sif
 > openfoam-7-foundation.sif
 > ~~~
@@ -109,68 +108,113 @@ drwxrwsr-x  3 maali    pawsey0001       4096 Mar  3 09:52 ..
 
 <p>&nbsp;</p>
 
-## 2. OpenFOAM containers need MPICH to run on Crays 
+## B. OpenFOAM containers need MPICH to run on Crays 
 
-> ## Container MPI and the host MPI need to be ABI compatible
-> Singularity allows the use of the high-performance host MPI implementation if the container and the host versions of MPI are ABI compatible.
-> Execution is performed with the "hybrid mode" described in the [Singularity documentation](https://sylabs.io/guides/3.5/user-guide/mpi.html?highlight=hybrid%20mode). (More about this will be discussed later)
-> 
-> Even if developers' OpenFOAM Docker containers were ported into Singularity, they would not run properly on Crays
-> because those containers use OpenMPI and it is not ABI compatible with Cray-MPICH. Therefore, OpenFOAM containers
-> to be ran on Crays need to be equipped and compiled with MPICH.
-> 
-> You can check the definition of key variables for hybrid mode execution (`SINGULARITY_BINDPATH` and `SINGULARITYENV_LD_LIBRARY_PATH`) with:
-> 
-> ~~~
-> zeus-1:~> module show singularity
-> ~~~
-> {: .bash}
+> ## Singularity Hybrid Mode for MPI applications
 >
-> ~~~
-> ---------------------------------------------------------------------------------------------------------------
->    /pawsey/sles12sp3/modulefiles/devel/singularity/3.5.2.lua:
-> ---------------------------------------------------------------------------------------------------------------
-> help([[Sets up the paths you need to use singularity version 3.5.2]])
-> whatis("Singularity enables users to have full control of their environment. Singularity 
-> containers can be used to package entire scientific workflows, software and 
-> libraries, and even data.
-> 
-> For further information see https://sylabs.io/singularity")
-> whatis("Compiled with gcc/4.8.5")
-> setenv("MAALI_SINGULARITY_HOME","/pawsey/sles12sp3/devel/gcc/4.8.5/singularity/3.5.2")
-> prepend_path("MANPATH","/pawsey/sles12sp3/devel/gcc/4.8.5/singularity/3.5.2/share/man")
-> prepend_path("PATH","/pawsey/sles12sp3/devel/gcc/4.8.5/singularity/3.5.2/bin")
-> setenv("SINGULARITYENV_LD_LIBRARY_PATH","/usr/lib64:/pawsey/intel/17.0.5/compilers_and_libraries/linux/mpi/intel64/lib")
-> setenv("SINGULARITY_BINDPATH","/astro,/group,/scratch,/pawsey,/etc/dat.conf,/etc/libibverbs.d,/usr/lib64/libdaplofa.so.2,/usr/lib64/libdaplofa.so.2.0.0,/usr/lib64/libdat2.so.2,/usr/lib64/libdat2.so.2.0.0,/usr/lib64/libibverbs,/usr/lib64/libibverbs.so,/usr/lib64/libibverbs.so.1,/usr/lib64/libibverbs.so.1.1.14,/usr/lib64/libmlx5.so,/usr/lib64/libmlx5.so.1,/usr/lib64/libmlx5.so.1.1.14,/usr/lib64/libnl-3.so.200,/usr/lib64/libnl-3.so.200.18.0,/usr/lib64/libnl-cli-3.so.200,/usr/lib64/libnl-cli-3.so.200.18.0,/usr/lib64/libnl-genl-3.so.200,/usr/lib64/libnl-genl-3.so.200.18.0,/usr/lib64/libnl-idiag-3.so.200,/usr/lib64/libnl-idiag-3.so.200.18.0,/usr/lib64/libnl-nf-3.so.200,/usr/lib64/libnl-nf-3.so.200.18.0,/usr/lib64/libnl-route-3.so.200,/usr/lib64/libnl-route-3.so.200.18.0,/usr/lib64/librdmacm.so,/usr/lib64/librdmacm.so.1,/usr/lib64/librdmacm.so.1.0.14")
-setenv("SINGULARITY_CACHEDIR","/group/pawsey0001/espinosa/.singularity")
-> ~~~
-> {: .output}
+> - "Hybrid mode" execution is a way in which Singularity allows a containerised MPI application to **use the host MPI libraries** for better performance.
+> - The only restriction for the hybrid mode to work is that host-MPI installation and container-MPI installation to be **ABI compatible**
+> - (ABI=Application Binary Interface)
+> - More information about the "hybrid mode" can be found in the [Singularity documentation](https://sylabs.io/guides/3.5/user-guide/mpi.html?highlight=hybrid%20mode)
 >
-> And you can check the MPI version installed inside the container with:
+{: .prereq}
+
+<p>&nbsp;</p>
+
+> ## Why do we prefer Hybrid-mode?
+> - Because it gives better performance:
+> - Running containerised MPI applications with the internal MPI is not the best approach.
+> - For example, we have tested the solution of the channel395 tutorial (10 executions each) on a desktop computer  with 4 cores:
 > 
-> ~~~
-> zeus-1:~> theImage="/group/singularity/pawseyRepository/OpenFOAM/openfoam-v1912-pawsey.sif"
-> zeus-1:~> singularity exec $theImage mpiexec --version
-> ~~~
-> {: .bash}
+> | Tutorial | Container | Mode | Avg.ClockTime |
+> |----------|-----------|------|-----------|
+> | channel395 | openfoam/openfoam7-paraview56:latest | Docker-internalOpenMPI | 1064.8 s|
+> | channel395 | openfoam-7-foundation.sif | Singularity-internalOpenMPI | 806.4 s|
+> | channel395 | openfoam-7-foundation.sif | Singularity-hybrid-HostOpenMPI | 787.2 s|
+> | channel395 | pawsey/openfoam:7 | Docker-internalMPICH | 975.4 s|
+> | channel395 | openfoam-7-pawsey.sif | Singularity-internalMPICH | 783.6 s|
+> | channel395 | openfoam-7-pawsey.sif | Singularity-hybrid-HostMPICH | 779.2 s|
 >
-> ~~~
-> HYDRA build details:
->     Version:                                 3.1.4
->     Release Date:                            Fri Feb 20 15:02:56 CST 2015
->     CC:                              gcc    
->     CXX:                             g++    
->     F77:                             gfortran   
->     F90:                             gfortran   
->     Configure options:                       '--disable-option-checking' '--prefix=/usr' '--enable-fast=all,O3' '--cache-file=/dev/null' '--srcdir=.' 'CC=gcc' 'CFLAGS= -DNDEBUG -DNVALGRIND -O3' 'LDFLAGS= ' 'LIBS=-lpthread ' 'CPPFLAGS= -I/tmp/mpich-build/mpich-3.1.4/src/mpl/include -I/tmp/mpich-build/mpich-3.1.4/src/mpl/include -I/tmp/mpich-build/mpich-3.1.4/src/openpa/src -I/tmp/mpich-build/mpich-3.1.4/src/openpa/src -D_REENTRANT -I/tmp/mpich-build/mpich-3.1.4/src/mpi/romio/include'
->     Process Manager:                         pmi
->     Launchers available:                     ssh rsh fork slurm ll lsf sge manual persist
->     Topology libraries available:            hwloc
->     Resource management kernels available:   user slurm ll lsf sge pbs cobalt
->     Checkpointing libraries available:       
->     Demux engines available:                 poll select
-> ~~~
-> {: .output}
+> - It is also the only way to run multi-node applications
+>
 {: .callout}
+
+<p>&nbsp;</p>
+
+> ## Why MPICH?
+>
+> - To achieve the best performance in a supercomputer, we want to run in hybrid mode with the optimised host MPI
+> - In the case of Magnus, **Cray-MPI (ABI compatible to MPICH) is the only supported flavour**
+> - Therefore, we decided to support containerised MPI applications compiled with MPICH
+> - MPICH containers also run properly on Zeus
+>
+{: .prereq}
+
+<p>&nbsp;</p>
+
+> ## Main drawback: 
+>
+> - Developers' OpenFOAM containers equipped with OpenMPI would not run properly on Magnus (even after conversion to Singularity)
+> - OpenFOAM containers need to be built from scratch with MPICH
+>
+{: .callout}
+
+<p>&nbsp;</p>
+
+> ## B.I Briefly check the settings at Pawsey
+> 
+> 1. You can check the definition of key variables for hybrid-mode execution (`SINGULARITY_BINDPATH` and `SINGULARITYENV_LD_LIBRARY_PATH`) with:
+> 
+>    ~~~
+>    zeus-1:~> module show singularity
+>    ~~~
+>    {: .bash}
+>
+>    ~~~
+>    ---------------------------------------------------------------------------------------------------------------
+>       /pawsey/sles12sp3/modulefiles/devel/singularity/3.5.2.lua:
+>    ---------------------------------------------------------------------------------------------------------------
+>    help([[Sets up the paths you need to use singularity version 3.5.2]])
+>    whatis("Singularity enables users to have full control of their environment. Singularity 
+>    containers can be used to package entire scientific workflows, software and 
+>    libraries, and even data.
+>    
+>    For further information see https://sylabs.io/singularity")
+>    whatis("Compiled with gcc/4.8.5")
+>    setenv("MAALI_SINGULARITY_HOME","/pawsey/sles12sp3/devel/gcc/4.8.5/singularity/3.5.2")
+>    prepend_path("MANPATH","/pawsey/sles12sp3/devel/gcc/4.8.5/singularity/3.5.2/share/man")
+>    prepend_path("PATH","/pawsey/sles12sp3/devel/gcc/4.8.5/singularity/3.5.2/bin")
+>    setenv("SINGULARITYENV_LD_LIBRARY_PATH","/usr/lib64:/pawsey/intel/17.0.5/compilers_and_libraries/linux/mpi/intel64/lib")
+>    setenv("SINGULARITY_BINDPATH","/astro,/group,/scratch,/pawsey,/etc/dat.conf,/etc/libibverbs.d,/usr/lib64/libdaplofa.so.2,/usr/lib64/libdaplofa.so.2.0.0,/usr/lib64/libdat2.so.2,/usr/lib64/libdat2.so.2.0.0,/usr/lib64/libibverbs,/usr/lib64/libibverbs.so,/usr/lib64/libibverbs.so.1,/usr/lib64/libibverbs.so.1.1.14,/usr/lib64/libmlx5.so,/usr/lib64/libmlx5.so.1,/usr/lib64/libmlx5.so.1.1.14,/usr/lib64/libnl-3.so.200,/usr/lib64/libnl-3.so.200.18.0,/usr/lib64/libnl-cli-3.so.200,/usr/lib64/libnl-cli-3.so.200.18.0,/usr/lib64/libnl-genl-3.so.200,/usr/lib64/libnl-genl-3.so.200.18.0,/usr/lib64/libnl-idiag-3.so.200,/usr/lib64/libnl-idiag-3.so.200.18.0,/usr/lib64/libnl-nf-3.so.200,/usr/lib64/libnl-nf-3.so.200.18.0,/usr/lib64/libnl-route-3.so.200,/usr/lib64/libnl-route-3.so.200.18.0,/usr/lib64/librdmacm.so,/usr/lib64/librdmacm.so.1,/usr/lib64/librdmacm.so.1.0.14")
+se   tenv("SINGULARITY_CACHEDIR","/group/pawsey0001/espinosa/.singularity")
+>    ~~~
+>    {: .output}
+>
+> 2. And you can check the MPI version installed inside the container with:
+> 
+>    ~~~
+>    zeus-1:~> theImage="/group/singularity/pawseyRepository/OpenFOAM/openfoam-v1912-pawsey.sif"
+>    zeus-1:~> singularity exec $theImage mpiexec --version
+>    ~~~
+>    {: .bash}
+>
+>    ~~~
+>    HYDRA build details:
+>        Version:                                 3.1.4
+>        Release Date:                            Fri Feb 20 15:02:56 CST 2015
+>        CC:                              gcc    
+>        CXX:                             g++    
+>        F77:                             gfortran   
+>        F90:                             gfortran   
+>        Configure options:                       '--disable-option-checking' '--prefix=/usr' '--enable-fast=all,O3' '--cache-file=/dev/null' '--srcdir=.' 'CC=gcc' 'CFLAGS= -DNDEBUG -DNVALGRIND -O3' 'LDFLAGS= ' 'LIBS=-lpthread ' 'CPPFLAGS= -I/tmp/mpich-build/mpich-3.1.4/src/mpl/include -I/tmp/mpich-build/mpich-3.1.4/src/mpl/include -I/tmp/mpich-build/mpich-3.1.4/src/openpa/src -I/tmp/mpich-build/mpich-3.1.4/src/openpa/src -D_REENTRANT -I/tmp/mpich-build/mpich-3.1.4/src/mpi/romio/include'
+>        Process Manager:                         pmi
+>        Launchers available:                     ssh rsh fork slurm ll lsf sge manual persist
+>        Topology libraries available:            hwloc
+>        Resource management kernels available:   user slurm ll lsf sge pbs cobalt
+>        Checkpointing libraries available:       
+>        Demux engines available:                 poll select
+>    ~~~
+>    {: .output}
+{: .discussion}
 
 <p>&nbsp;</p>

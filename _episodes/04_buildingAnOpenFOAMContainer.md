@@ -11,7 +11,7 @@ keypoints:
 - We recommend to used Docker for the recipe and the port to Singularity
 ---
 
-<p>&nbsp;</p>
+## 0. Introduction
 
 > ## Singularity Hybrid Mode for MPI applications
 >

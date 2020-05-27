@@ -13,61 +13,102 @@ keypoints:
 - For this exercise, `singularity exec -B $projectUserDir:/home/ofuser/OpenFOAM/ofuser-v1912 $theImage <mySolver> <myOptions>`
 ---
 
-One of the attractive features of OpenFOAM is the possibility of building your own tools/solvers and execute them with the whole OpenFOAM environment.
-OpenFOAM containers are usually equipped only with the standard tools/solvers.
-But users can still compile their own tools and use them with a standard container.
+<p>&nbsp;</p>
 
-Here we make use of a series of scripts to cover a typical compilation/execution workflow.
+## 0. Introduction
 
-- cd into the directory where the provided scripts are. In this case we'll use OpenFOAM-v1912.
-
-~~~
-zeus-1:~> cd $MYSCRATCH/pawseyTraining/containers-openfoam-workshop-scripts
-zeus-1:*-scripts> cd 03_compileAndExecuteUsersOwnTools/example_OpenFOAM-v1912
-zeus-1:*-v1912> ls
-~~~
-{: .bash}
-
-~~~
-A.cloneMyPimpleFoam.sh    C.extractTutorial.sh  E.decomposeFoam.sh  projectUserDir
-B.compileMyPimpleFoam.sh  D.adaptCase.sh        F.runFoam.sh        run
-~~~
-{: .output}
-
-Quickly read one of the scripts, for example `B.compileMyPimpleFoam.sh`.
-We recommed the following text readers:
-- `view` (navigate with up and down arrows, use `:q` or `:q!` to quit)
-- `less` (navigate with up and down arrows, use `q` to quit) (this one does not have syntax highlight)
-
-~~~
-zeus-1:*-v1912> view B.compileMyPimpleFoam.sh
-~
-~
-~
-:q
-zeus-1*-v1912>
-~~~
-{: .bash}
-
-In the following sections, there are instructions for submitting these job scripts for execution in the supercomputer one by one. 
-
-Very similar submission steps are executed in each of the stages.
-So, in order to avoid too much repetition and save time for important discussions,
-the scripts `A.cloneMyPimpleFoam.sh`, `C.extractTutorial.sh` and `D.adaptCase.sh` have already been executed for you.
-So we can concentrate in the main stages of compilation of the `myPimpleFoam` solver and its usage.
-
-We'll start with a detailed explanation at the final step of section "A. Cloning of the solver".
-And continue the explanation through all section "B. compileMyPimpleFoam".
-Users will then jump to section E. and proceed by themselves afterwards.
-
-At the end, we'll discuss the main instructions within the scripts and the whole process.
+> ## Users own tools
+>
+> - One of the attractive features of OpenFOAM is the possibility of building your own tools/solvers
+> - And execute them together with the whole OpenFOAM environment
+> - OpenFOAM containers are usually equipped **only** with the standard tools/solvers
+> - **Nevertheless, users can still compile their own tools and use them with a standard container**
+>
+{: .prereq}
 
 <p>&nbsp;</p>
 
-## A. Cloning internal solver "pimpleFoam" into our own solver "myPimpleFoam"
-   
-> ## The `A.cloneMyPimpleFoam.sh` script (main sections to be discussed):
+> ## 0.I Accessing the scripts for this episode
 >
+> In this whole episode, we make use of a series of scripts to cover a typical compilation/execution workflow. Lets start by listing the scripts.
+>
+> 1. cd into the directory where the provided scripts are. In this case we'll use OpenFOAM-v1912.
+> 
+>    ~~~
+>    zeus-1:~> cd $MYSCRATCH/pawseyTraining/containers-openfoam-workshop-scripts
+>    zeus-1:*-scripts> cd 03_compileAndExecuteUsersOwnTools/example_OpenFOAM-v1912
+>    zeus-1:*-v1912> ls
+>    ~~~
+>    {: .bash}
+>    
+>    ~~~
+>    A.cloneMyPimpleFoam.sh    C.extractTutorial.sh  E.decomposeFoam.sh  projectUserDir
+>    B.compileMyPimpleFoam.sh  D.adaptCase.sh        F.runFoam.sh        run
+>    ~~~
+>    {: .output}
+>    
+> 2. Quickly read one of the scripts, for example `B.compileMyPimpleFoam.sh`.
+>    We recommed the following text readers:
+>    - `view` (navigate with up and down arrows, use `:q` or `:q!` to quit)
+>    - or `less` (navigate with up and down arrows, use `q` to quit) (this one does not have syntax highlight)
+>    - If you are using an editor to read the scripts, **DO NOT MODIFY THEM!** because your exercise could mess up
+>    - (Try your own settings after succeding with the original exercise, ideally in a copy of the script)
+>    
+>    ~~~
+>    zeus-1:*-v1912> view B.compileMyPimpleFoam.sh
+>    ~
+>    ~
+>    ~
+>    :q
+>    zeus-1*-v1912>
+>    ~~~
+>    {: .bash}
+>
+{: .discussion}
+
+<p>&nbsp;</p>
+
+> ## Sections and scripts for this episode
+>
+> - In the following sections, there are instructions for submitting these job scripts for execution in the supercomputer one by one:
+>    - `A.cloneMyPimpleFoam.sh` **(already pre-executed)** is for copying the source files of an existing solver into our local file system
+>    - After the copy, the script above also renames the solver as a user's own solver `myPimpleFoam`
+>    - `B.compileMyPimpleFoam.sh` is for compiling user's own solver
+>    - `C.extractTutorial.sh` **(already pre-executed)** is for copying a tutorial from the interior of the container into our local file system
+>    - `D.adaptCase.sh` **(already pre-executed)** is for modifying the tutorial to comply with Pawsey's best practices 
+>    - `E.decomposeFoam.sh` is for meshing and decomposing the intial conditions of the case
+>    - `F.runFoam.sh` is for executing the user's own solver
+>
+{: .prereq}
+
+<p>&nbsp;</p>
+
+> ## So how will this episode flow?
+> - The script of section "A" has already been pre-executed.
+> - We'll start with a detailed explanation at the end of section "A. Cloning of the solver".
+> - And continue the explanation through all section "B. compileMyPimpleFoam".
+> - Users will then jump to section E. and proceed by themselves afterwards.
+> - At the end, of each section we'll discuss the main instructions within the scripts and the whole process.
+>
+{: .callout}
+
+<p>&nbsp;</p>
+
+## A. Cloning a standard solver into user's own solver `myPimpleFoam`
+
+> ## Main command in the `A.cloneMyPimpleFoam.sh` script:   
+>
+> ~~~
+> appDirInside=applications/solvers/incompressible
+> solverOrg=pimpleFoam
+> solverNew=myPimpleFoam
+> srun -n 1 -N 1 singularity exec $theImage bash -c 'cp -r $WM_PROJECT_DIR/'"$appDirInside/$solverOrg $projectUserDir/applications/$solverNew"
+> ~~~
+> {: .bash}
+>
+{: .callout}
+
+> ## Other important parts of the script:
 > ~~~
 > #3. Define the user directory in the local host and the place where to put the solver
 > #projectUserDir=$MYGROUP/OpenFOAM/$USER-$theVersion/workshop/02_runningUsersOwnTools
@@ -131,7 +172,7 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 > 
 {: .solution}
 
-> ## Initial steps for dealing with the cloning of the solver into "myPimpleFoam" **- [Pre-Executed]**
+> ## A.I Initial steps for dealing with this section **- [Pre-Executed]**
 > 1. Submit the job (no need for reservation as the script uses the `copyq` partition)
 > 
 >    ~~~
@@ -145,21 +186,23 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 >    {: .output}
 {: .solution}
 
-> ## Final step: Check the source code and important settings for the compilation:
->    Users stuff in the local host will be saved under the `./projectUserDir`.
->    Right now it only has an `applications` folder where the new solver source files are kept: 
+> ## A.II Final steps. To check the source code and important settings for the compilation:
+> - Users stuff in the local host is saved under the `./projectUserDir`.
+> - At this point, it only has an `applications` folder where the new solver source files are kept: 
 >
+> 1. Check what is in the `./projectUserDir`
 >    ~~~
 >    zeus-1:*-v1912> ls projectUserDir/ 
 >    ~~~
 >    {: .bash}
->
+>   
 >    ~~~
 >    applications
 >    ~~~
 >    {: .output}
->
->    Go inside the `myPimpleFoam` folder within `applications`
+>   
+> 2. cd into the `myPimpleFoam` folder within `applications`
+>   
 >    ~~~
 >    zeus-1:*-v1912> cd projectUserDir/applications/myPimpleFoam
 >    zeus-1:myPimpleFoam> ls
@@ -170,9 +213,10 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 >    correctPhi.H  createFields.H  Make  myPimpleFoam.C  pEqn.H  UEqn.H
 >    ~~~
 >    {: .output}
+>    - There is our own new solver to be compiled 
 >    
->    Take a quick look to the source of the solver:
->    
+> 3. Take a quick look to the source file of the solver:
+>   
 >    ~~~
 >    zeus-1:myPimpleFoam> view myPimpleFoam.C
 >    ~
@@ -181,9 +225,11 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 >    :q
 >    ~~~
 >    {: .bash}
+>    - Discussion of the intrinsics of the solver are out of the scope of this training
+>    - But we know it works because it is an exact replica of the standard `pimpleFoam` solver (but renamed)
 >    
->    Inside the `Make` directory there are two important files:
->    
+> 4. Inside the `Make` directory there are two important files:
+>   
 >    ~~~
 >    zeus-1:myPimpleFoam> cd Make
 >    zeus-1:Make> ls
@@ -194,9 +240,9 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 >    files  options
 >    ~~~
 >    {: .output}
->    
->    In the file `options` there is a list of the OpenFOAM libraries to be included in the solver:
->    
+>   
+> 5. In the file `options` there is a list of the OpenFOAM libraries to be included in the solver:
+>   
 >    ~~~
 >    zeus-1:Make> cat options
 >    ~~~
@@ -229,8 +275,8 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 >    ~~~
 >    {: .output}
 >    
->    In the file `files` there is a setting for the place where the final executable binary will be created:
->    
+> 6. In the file `files` there is a setting for the place where the final executable binary will be created:
+>   
 >    ~~~
 >    zeus-1:Make> cat files
 >    ~~~
@@ -244,86 +290,104 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 >    {: .output}
 {: .discussion}
 
-> ## The `FOAM_USER_APPBIN`, the `WM_PROJECT_USER_DIR` and other OpenFOAM environment variables
+<p>&nbsp;</p>
+
+> ## A.III The `FOAM_USER_APPBIN`, the `WM_PROJECT_USER_DIR` and other OpenFOAM environment variables
 >
-> OpenFOAM makes use of several environmet variables.
-> Most of those variables start with `FOAM_` and `WM_`.
+> - OpenFOAM makes use of several environmet variables.
+> - Most of those variables start with `FOAM_` and `WM_`.
+> - The setting of those variables is usually performed by sourcing the `bashrc` file
+> - For our images, that `bashrc` file is in `/opt/OpenFOAM/OpenFOAM-v1912/etc`
+> - For our Singularity images, this file is sourced every time the container is ran (so no additional sourcing is needed)
+> - (If executing the Docker image elsewhere, the you will indeed need to source the `bashrc` file)
 >
-> To check a clean list of the variables (defined inside the container) you can use:
+> <p>&nbsp;</p>
 >
-> ~~~
-> zeus-1:myPimpleFoam> module load singularity 
-> zeus-1:myPimpleFoam> theImage=/group/singularity/pawseyRepository/OpenFOAM/openfoam-v1912-pawsey.sif 
-> zeus-1:myPimpleFoam> singularity exec $theImage bash -c 'awk "BEGIN{for(v in ENVIRON) print v}" | egrep "FOAM_|WM_" | sort'
-> ~~~
-> {: .bash}
->
-> ~~~
-> FOAM_API
-> FOAM_APP
-> FOAM_APPBIN
-> FOAM_ETC
-> FOAM_EXT_LIBBIN
-> FOAM_LIBBIN
-> FOAM_MPI
-> FOAM_RUN
-> FOAM_SETTINGS
-> FOAM_SITE_APPBIN
-> FOAM_SITE_LIBBIN
-> FOAM_SOLVERS
-> FOAM_SRC
-> FOAM_TUTORIALS
-> FOAM_USER_APPBIN
-> FOAM_USER_LIBBIN
-> FOAM_UTILITIES
-> WM_ARCH
-> WM_COMPILER
-> WM_COMPILER_LIB_ARCH
-> WM_COMPILER_TYPE
-> WM_COMPILE_OPTION
-> WM_DIR
-> WM_LABEL_OPTION
-> WM_LABEL_SIZE
-> WM_MPLIB
-> WM_NCOMPPROCS
-> WM_OPTIONS
-> WM_PRECISION_OPTION
-> WM_PROJECT
-> WM_PROJECT_DIR
-> WM_PROJECT_USER_DIR
-> WM_PROJECT_VERSION
-> WM_THIRD_PARTY_DIR
-> ~~~
-> {: .output}
->
-> The main variables of interst here are `WM_PROJECT_USER_DIR`, `FOAM_USER_APPBIN` and `FOAM_USER_LIBBIN`:
->
-> ~~~
-> zeus-1:myPimpleFoam> singularity exec $theImage bash -c 'printenv | grep "_USER_" | sort -r'
-> ~~~
-> {: .bash}
->
-> ~~~
-> WM_PROJECT_USER_DIR=/home/ofuser/OpenFOAM/ofuser-v1912
-> FOAM_USER_LIBBIN=/home/ofuser/OpenFOAM/ofuser-v1912/platforms/linux64GccDPInt32Opt/lib
-> FOAM_USER_APPBIN=/home/ofuser/OpenFOAM/ofuser-v1912/platforms/linux64GccDPInt32Opt/bin
-> FOAM_SETTINGS=bash -c printenv | grep "_USER_" | sort -r
-> ~~~
-> {: .output}
->
-> - `WM_PROJECT_USER_DIR` is the "root" path where user's stuff is stored 
-> - `FOAM_USER_APPBIN` is the place where the binary executables of user's own solvers are stored and looked for
-> - `FOAM_USER_LIBBIN` is the place where user's own libraries are stored and looked for
-> - As you can see, the APPBIN and LIBBIN paths are under the WM_PROJECT_USER_DIR path
-> - **Internal directories of the container are non-writable**
-> - **But we'll bind a local directory (with `-B` option) to the path of `WM_PROJECT_USER_DIR` to make things work**
+> 1. To check a clean list of the variables (defined inside the container) you can use:
+>   
+>    ~~~
+>    zeus-1:myPimpleFoam> module load singularity 
+>    zeus-1:myPimpleFoam> theImage=/group/singularity/pawseyRepository/OpenFOAM/openfoam-v1912-pawsey.sif 
+>    zeus-1:myPimpleFoam> singularity exec $theImage bash -c 'awk "BEGIN{for(v in ENVIRON) print v}" | egrep "FOAM_|WM_" | sort'
+>    ~~~
+>    {: .bash}
+>   
+>    ~~~
+>    FOAM_API
+>    FOAM_APP
+>    FOAM_APPBIN
+>    FOAM_ETC
+>    FOAM_EXT_LIBBIN
+>    FOAM_LIBBIN
+>    FOAM_MPI
+>    FOAM_RUN
+>    FOAM_SETTINGS
+>    FOAM_SITE_APPBIN
+>    FOAM_SITE_LIBBIN
+>    FOAM_SOLVERS
+>    FOAM_SRC
+>    FOAM_TUTORIALS
+>    FOAM_USER_APPBIN
+>    FOAM_USER_LIBBIN
+>    FOAM_UTILITIES
+>    WM_ARCH
+>    WM_COMPILER
+>    WM_COMPILER_LIB_ARCH
+>    WM_COMPILER_TYPE
+>    WM_COMPILE_OPTION
+>    WM_DIR
+>    WM_LABEL_OPTION
+>    WM_LABEL_SIZE
+>    WM_MPLIB
+>    WM_NCOMPPROCS
+>    WM_OPTIONS
+>    WM_PRECISION_OPTION
+>    WM_PROJECT
+>    WM_PROJECT_DIR
+>    WM_PROJECT_USER_DIR
+>    WM_PROJECT_VERSION
+>    WM_THIRD_PARTY_DIR
+>    ~~~
+>    {: .output}
+>   
+> 2. The main variables of interst here are `WM_PROJECT_USER_DIR`, `FOAM_USER_APPBIN` and `FOAM_USER_LIBBIN`:
+>   
+>    ~~~
+>    zeus-1:myPimpleFoam> singularity exec $theImage bash -c 'printenv | grep "_USER_" | sort -r'
+>    ~~~
+>    {: .bash}
+>   
+>    ~~~
+>    WM_PROJECT_USER_DIR=/home/ofuser/OpenFOAM/ofuser-v1912
+>    FOAM_USER_LIBBIN=/home/ofuser/OpenFOAM/ofuser-v1912/platforms/linux64GccDPInt32Opt/lib
+>    FOAM_USER_APPBIN=/home/ofuser/OpenFOAM/ofuser-v1912/platforms/linux64GccDPInt32Opt/bin
+>    FOAM_SETTINGS=bash -c printenv | grep "_USER_" | sort -r
+>    ~~~
+>    {: .output}
+>   
+>    - `WM_PROJECT_USER_DIR` is the "root" path where user's stuff is stored 
+>    - `FOAM_USER_APPBIN` is the place where the binary executables of user's own solvers are stored and looked for
+>    - `FOAM_USER_LIBBIN` is the place where user's own libraries are stored and looked for
+>    - As you can see, the APPBIN and LIBBIN paths are under the WM_PROJECT_USER_DIR path
+>    - **Internal directories of the container are non-writable**
+>    - **But we'll bind a local directory (with `-B` option) to the path of `WM_PROJECT_USER_DIR` to make things work**
 {: .discussion}
 
 <p>&nbsp;</p>
 
 ## B. Compilation of **myPimpleFoam**
    
-> ## The `B.compileMyPimpleFoam.sh` script (main sections to be discussed):
+> ## Main command in the `B.compileMyPimpleFoam.sh` script
+>
+> ~~~
+> projectUserDir=$SLURM_SUBMIT_DIR/projectUserDir
+> srun -n 1 -N 1 singularity exec -B $projectUserDir:/home/ofuser/OpenFOAM/ofuser-$theVersion $theImage wmake
+> ~~~
+> {: .bash}
+>
+{: .callout}
+
+> ## Other important parts of the script:
 >
 > ~~~
 > #3. Going into the new solver directory and creating the logs directory
@@ -365,10 +429,10 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 > {: .bash}
 {: .solution}
 
-> ## Steps for dealing with the compilation:
+> ## B.I Steps for dealing with the compilation:
 > 1. From the scripts directory, submit the compilation script:
 >    ~~~
->    zeus-1:*-v1912> myReservation=XXX 
+>    zeus-1:*-v1912> myReservation=containers 
 >    zeus-1:*-v1912> sbatch --reservation=$myReservation B.compileMyPimpleFoam.sh 
 >    ~~~
 >    {: .bash}
@@ -405,6 +469,22 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 > 3. You can check the `slurm-4632558.out` or the log file created by `tee` in the job-script (use the SLURM_JOBID of your job):
 >
 >    ~~~
+>    zeus-1:*-v1912> cat projectUserDir/applications/myPimpleFoam/logs/compile/wmake.4632558 
+>    ~~~
+>    {: .bash}
+>    
+>    ~~~
+>    Making dependency list for source file myPimpleFoam.C
+>    g++ -std=c++11 -m64 -DOPENFOAM=1912 -DWM_DP -DWM_LABEL_SIZE=32 -Wall -Wextra -Wold-style-cast -Wnon-virtual-dtor -Wno-unused-parameter -Wno-invalid-offsetof -Wno-attributes -Wno-unknown-pragmas -O3  -DNoRepository -ftemplate-depth-100 -I/opt/OpenFOAM/OpenFOAM-v1912/src/finiteVolume/lnInclude -I/opt/OpenFOAM/OpenFOAM-v1912/src/meshTools/lnInclude -I/opt/OpenFOAM/OpenFOAM-v1912/src/sampling/lnInclude -I/opt/OpenFOAM/OpenFOAM-v1912/src/TurbulenceModels/turbulenceModels/lnInclude -I/opt/OpenFOAM/OpenFOAM-v1912/src/TurbulenceModels/incompressible/lnInclude -I/opt/OpenFOAM/OpenFOAM-v1912/src/transportModels -I/opt/OpenFOAM/OpenFOAM-v1912/src/transportModels/incompressible/singlePhaseTransportModel -I/opt/OpenFOAM/OpenFOAM-v1912/src/dynamicMesh/lnInclude -I/opt/OpenFOAM/OpenFOAM-v1912/src/dynamicFvMesh/lnInclude -IlnInclude -I. -I/opt/OpenFOAM/OpenFOAM-v1912/src/OpenFOAM/lnInclude -I/opt/OpenFOAM/OpenFOAM-v1912/src/OSspecific/POSIX/lnInclude   -fPIC -c myPimpleFoam.C -o Make/linux64GccDPInt32Opt/myPimpleFoam.o
+>    g++ -std=c++11 -m64 -DOPENFOAM=1912 -DWM_DP -DWM_LABEL_SIZE=32 -Wall -Wextra -Wold-style-cast -Wnon-virtual-dtor -Wno-unused-parameter -Wno-invalid-offsetof -Wno-attributes -Wno-unknown-pragmas -O3  -DNoRepository -ftemplate-depth-100 -I/opt/OpenFOAM/OpenFOAM-v1912/src/finiteVolume/lnInclude -I/opt/OpenFOAM/OpenFOAM-v1912/src/meshTools/lnInclude -I/opt/OpenFOAM/OpenFOAM-v1912/src/sampling/lnInclude -I/opt/OpenFOAM/OpenFOAM-v1912/src/TurbulenceModels/turbulenceModels/lnInclude -I/opt/OpenFOAM/OpenFOAM-v1912/src/TurbulenceModels/incompressible/lnInclude -I/opt/OpenFOAM/OpenFOAM-v1912/src/transportModels -I/opt/OpenFOAM/OpenFOAM-v1912/src/transportModels/incompressible/singlePhaseTransportModel -I/opt/OpenFOAM/OpenFOAM-v1912/src/dynamicMesh/lnInclude -I/opt/OpenFOAM/OpenFOAM-v1912/src/dynamicFvMesh/lnInclude -IlnInclude -I. -I/opt/OpenFOAM/OpenFOAM-v1912/src/OpenFOAM/lnInclude -I/opt/OpenFOAM/OpenFOAM-v1912/src/OSspecific/POSIX/lnInclude   -fPIC -Xlinker --add-needed -Xlinker --no-as-needed Make/linux64GccDPInt32Opt/myPimpleFoam.o -L/opt/OpenFOAM/OpenFOAM-v1912/platforms/linux64GccDPInt32Opt/lib \
+>        -lfiniteVolume -lfvOptions -lmeshTools -lsampling -lturbulenceModels -lincompressibleTurbulenceModels -lincompressibleTransportModels -ldynamicMesh -ldynamicFvMesh -ltopoChangerFvMesh -latmosphericModels -lOpenFOAM -ldl  \
+>         -lm -o /home/ofuser/OpenFOAM/ofuser-v1912/platforms/linux64GccDPInt32Opt/bin/myPimpleFoam
+>    ~~~
+>    {: .output}
+>
+> 4. You can check the log for the mini-test of the solver:
+>
+>    ~~~
 >    zeus-1:*-v1912> cat projectUserDir/applications/myPimpleFoam/logs/compile/myPimpleFoam.4632558 
 >    ~~~
 >    {: .bash}
@@ -432,7 +512,7 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 >    ~~~
 >    {: .output}
 >
-> 4. Or you can perform that basic test from the command line:
+> 5. Or you can perform that basic mini-test from the command line:
 >
 >    ~~~
 >    zeus-1:*-v1912> module load singularity
@@ -464,7 +544,7 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 >    ~~~
 >    {: .output} 
 >
-> 5. (If you do not use the binding, the solver will not be found):
+> 6. (If you do not use the binding, the solver will not be found):
 >
 >    ~~~
 >    zeus-1:*-v1912> singularity exec $theImage myPimpleFoam -help 
@@ -481,7 +561,7 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 
 ## C. Extraction of the tutorial: channel395 **- [Pre-Executed]**
    
-> ## The `C.extractTutorial.sh` script (main sections to be discussed):
+> ## The `C.extractTutorial.sh` script (main parts to be discussed):
 >
 > ~~~
 > #!/bin/bash -l
@@ -504,7 +584,7 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 > 
 {: .solution}
 
-> ## Steps for dealing with the extraction of the "channel395" case:
+> ## C.I Steps for dealing with the extraction of the "channel395" case:
 > 1. Submit the job (no need for reservation as the script uses the `copyq` partition)
 > 
 >    ~~~
@@ -549,7 +629,7 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 
 ## D. Adapt the case to your needs (and Pawsey best practices) **- [Pre-Executed]**
 
-> ## The `D.adaptCase.sh` script (main sections to be discussed):
+> ## The `D.adaptCase.sh` script (main parts to be discussed):
 >
 > ~~~
 > #5. Defining OpenFOAM controlDict settings for Pawsey Best Practices
@@ -573,7 +653,7 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 > {: .bash}
 {: .solution}
 
-> ## Steps for dealing with the adaptation of the case
+> ## D.I Steps for dealing with the adaptation of the case
 >
 > 1. Submit the adaptation script
 > 
@@ -646,7 +726,7 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 <p>&nbsp;</p>
 
 ## E. Decomposition
-> ## The `E.decomposeFoam.sh` script (main points to be discussed):
+> ## The `E.decomposeFoam.sh` script (main parts to be discussed):
 > ~~~
 > #!/bin/bash -l
 > #SBATCH --ntasks=1
@@ -676,16 +756,12 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 > {: .bash}
 {: .solution}
 
-> ## Steps for dealing with decomposition:
+> ## E.I Steps for dealing with decomposition:
 > 
 > 1. Submit the decomposition script from the scripts directory (use the reservation for the workshop if available)
 >
 >    ~~~
->    zeus-1:*-v1912> myReservation=XXX
->    ~~~
->    {: .bash}
-> 
->    ~~~
+>    zeus-1:*-v1912> myReservation=containers
 >    zeus-1:*-v1912> sbatch --reservation=$myReservation E.decomposeFoam.sh 
 >    ~~~
 >    {: .bash}
@@ -719,7 +795,18 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 <p>&nbsp;</p>
 
 ## F. Executing the **NEW** solver **"myPimpleFoam"**
-> ## The `F.runFoam.sh` script (main points to be discussed):
+
+> ## Main command in the `F.runFoam.sh` script
+> ~~~
+> of_solver=myPimpleFoam
+> projectUserDir=$SLURM_SUBMIT_DIR/projectUserDir
+> srun -n $SLURM_NTASKS -N $SLURM_JOB_NUM_NODES singularity exec -B $projectUserDir:/home/ofuser/OpenFOAM/ofuser-$theVersion $theImage $of_solver -parallel 
+> ~~~
+> - The important concept here is the binding of a local folder for the container to be able to read the binary executable
+> {: .bash}
+{: .callout}
+
+> ## Other important parts of the script:
 > ~~~
 > #SBATCH --ntasks=4
 > #SBATCH --mem=16G
@@ -727,7 +814,7 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 > #SBATCH --cluster=zeus
 > ~~~
 > {: .bash}
-
+>
 > ~~~
 > #5. Reading OpenFOAM decomposeParDict settings
 > foam_numberOfSubdomains=$(grep "^numberOfSubdomains" ./system/decomposeParDict | tr -dc '0-9')
@@ -789,14 +876,16 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 > echo "Execution finished"
 > ~~~
 > {: .bash}
+>
 {: .solution}
 
-> ## Steps for dealing with the solver
+> ## F.I Steps for dealing with the solver
 > 1. Submit the solver script (from the scripts directory)
 > 
 >    ~~~
 >    zeus-1:*-v1912> sbatch --reservation=$myReservation F.runFoam.sh 
 >    ~~~
+>    {: .bash}
 >    
 >    ~~~
 >    Submitted batch job 4632685 on cluster zeus
@@ -816,7 +905,7 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 >    ~~~
 >    {: .output}
 > 
->    Observe the output of the job with `tail -f` at runtime (use `<Ctrl-C>` to exit the command):
+> 3. Observe the output of the job with `tail -f` at runtime (use `<Ctrl-C>` to exit the command):
 >    ~~~
 >    zeus-1:*-v1912> tail -f slurm-4632685.out
 >    ~~~
@@ -845,6 +934,7 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 >    .
 >    ~~~
 >    {: .output}
+>    - Press `<Ctrl-C>` to exit `tail`
 > 
 > 3. Check that the solver gave some results:
 > 
