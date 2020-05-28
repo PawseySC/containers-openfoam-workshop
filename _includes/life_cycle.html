@@ -1,4 +1,5 @@
 
+{% comment %}
 {% if site.life_cycle == "pre-alpha" %}
 
 <div class="panel panel-default life-cycle">
@@ -6,6 +7,8 @@
     This lesson is still being designed and assembled (Pre-Alpha version)
   </div>
 </div>
+
+{% endif %}
 
 
 {% elsif site.life_cycle == "alpha" %}
@@ -31,4 +34,6 @@
 We don't do anything special for now
 {% endcomment %}
 
+
 {% endif %}
+{% endcomment %}
