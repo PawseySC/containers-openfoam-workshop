@@ -128,6 +128,7 @@ keypoints:
 > - Because it gives better performance:
 > - Running containerised MPI applications with the internal MPI is not the best approach.
 > - For example, we have tested the solution of the channel395 tutorial (10 executions each) on a desktop computer  with 4 cores:
+> - (All cases use the fileHandler collated; purgeWrite 10; writeFormat binary; runtimeModifiable false;) 
 > 
 > | Tutorial | Container | Mode | Avg.ClockTime |
 > |----------|-----------|------|-----------|

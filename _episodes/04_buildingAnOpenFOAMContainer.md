@@ -7,41 +7,44 @@ questions:
 objectives:
 - Explain our current recommended process for building OpenFOAM containers
 keypoints:
-- Take it easy and use existing `Dockerfile` examples and available guides to define your own recipe
-- We recommend to used Docker for the recipe and the port to Singularity
+- Take it easy, be patient
+- Use existing `Dockerfile` examples and available guides to define your own recipe
+- We recommend to use Docker first for the recipe
+- and then convert the image to Singularity
+- Once you have the Singularity image, you can copy the file to your preferred location in `/group`
 ---
 
-## 0. Introduction
+## Meaning of icons and colours (just for the context of this tutorial)
 
-> ## Singularity Hybrid Mode for MPI applications
+> ## Series of steps (commands) to be typed in users terminal (guided by instructor)
 >
-> - "Hybrid mode" execution is a way in which Singularity allows a containerised MPI application to **use the host MPI libraries** for better performance.
-> - The only restriction for the hybrid mode to work is that host-MPI installation and container-MPI installation to be **ABI compatible**
-> - (ABI=Application Binary Interface)
->
-{: .prereq}
+{: .discussion}
 
-<p>&nbsp;</p>
-
-> ## Why do we prefer Hybrid?
-> - Because it gives better performance:
-> - Running containerised MPI applications with the internal MPI is not the best approach.
-> - For example, we have tested the solution of the channel395 tutorial (10 executions each) on a desktop computer  with 4 cores:
-> 
-> | Tutorial | Container | Mode | Avg.ClockTime |
-> |----------|-----------|------|-----------|
-> | channel395 | openfoam/openfoam7-paraview56:latest | Docker-internalOpenMPI | 1064.8 s|
-> | channel395 | openfoam-7-foundation.sif | Singularity-internalOpenMPI | 806.4 s|
-> | channel395 | openfoam-7-foundation.sif | Singularity-hybrid-HostOpenMPI | 787.2 s|
-> | channel395 | pawsey/openfoam:7 | Docker-internalMPICH | 975.4 s|
-> | channel395 | openfoam-7-pawsey.sif | Singularity-internalMPICH | 783.6 s|
-> | channel395 | openfoam-7-pawsey.sif | Singularity-hybrid-HostMPICH | 779.2 s|
+> ## Series of steps (commands) to be typed in users terminal by themselves (in breakout room)
 >
-> - It is also the only way to run multi-node applications
+{: .challenge}
+
+> ## Collapsed blocks, with additional information, important parts of the scripts or pre-executed steps
+> No action required
+{: .solution}
+
+> ## The rest are just blocks ...
 >
 {: .callout}
 
-<p>&nbsp;</p>
+> ## ...                     with general information
+>
+{: .prereq}
+
+## 0. Introduction
+
+> ## Why you need to build your own container?
+>
+> - If the version of OpenFOAM that you need to use is not maintained by Pawsey
+> - If you want to move your OpenFOAM "installation" easily to another system
+> - If you want to use the OverlayFS approach to reduce the amount of reduced files (to be explained in the following episode)
+>
+{: .callout}
 
 > ## Why MPICH?
 >
@@ -206,22 +209,11 @@ You'll need to clone the git repository into your linux environment:
 >    ~~~
 >    {: .output}
 >
->
-{: .challenge}
+{: .discussion}
 
 <p>&nbsp;</p>
 
-## C. Quick look into the Pawsey's repositories
-
-- Pawsey maintains several images that can be used for running applications or for building new ones
-
-- The GitHub repository (where the definition files are shared) is: [https://github.com/PawseySC/pawsey-containers](https://github.com/PawseySC/pawsey-containers)
-
-- The DockerHub repository (where the corresponding Docker images are) is: [https://hub.docker.com/u/pawsey](https://hub.docker.com/u/pawsey)
-
-<p>&nbsp;</p>
-
-## D. Building a first Docker image with MPICH
+## C. Building a first Docker image with MPICH
 
 - As mentioned in the previous days, builiding containers of large applications will need some trial-and-error process
 
@@ -259,7 +251,19 @@ You'll need to clone the git repository into your linux environment:
 >    ~~~
 >    {: .output}
 >
-> 2. Let's take a look into the first Dockerfile (`Dockerfile.01`):
+> 2. If you wish, shrink your prompt, execute this:
+>
+>    ~~~
+>    PS1='${debian_chroot:+($debian_chroot)}\[\033[01;32m\]\u@\h\[\033[00m\]:\[\033[01;34m\]\W\[\033[00m\]\$ '
+>    ~~~
+>    {: .bash}
+>
+>    ~~~
+>    a shrinked prompt $ 
+>    ~~~
+>    {: .output}
+>
+> 3. Let's take a look into the first Dockerfile (`Dockerfile.01`):
 >
 >    > ## Main sections of the `Dockerfile.01` to discuss:
 >    >
@@ -380,7 +384,7 @@ You'll need to clone the git repository into your linux environment:
 >    > - Cloning the source directories for OpenFOAM installation
 >    {: .solution}
 >
-> 3. Now lets use the first Dockerfile to build a first Docker container (not the final main installation)
+> 4. Now lets use the first Dockerfile to build a first Docker container (not the final main installation)
 >
 >    > ~~~
 >    > ubuntu@vm:01_Docker$ docker build -f Dockerfile.01 -t myuser/openfoam:2.4.x.01 .
@@ -428,7 +432,7 @@ You'll need to clone the git repository into your linux environment:
 >    > {: .output}
 >    >
 >
-> 4. Check that the image exists:
+> 5. Check that the image exists:
 >    >
 >    > ~~~
 >    > ubuntu@vm:01_Docker$ docker image ls
@@ -448,7 +452,7 @@ You'll need to clone the git repository into your linux environment:
 
 <p>&nbsp;</p>
 
-## E. Updating the OpenFOAM settings files
+## E. Updating the OpenFOAM settings 
 
 - For the OpenFOAM installation to understand the use of the system-MPI (MPICH in this case), we need to modify the default settings
 
@@ -518,7 +522,7 @@ Let's take a look to the second Dockerfile (`Dockerfile.02`)
 >
 {: .solution}
 
-## F. Building a second image 
+## E. Building a second image 
 
 In this second exercise, the building process will advance a bit further, but will stop at the point where the following trick is set:
 
@@ -579,7 +583,7 @@ In this second exercise, the building process will advance a bit further, but wi
 >    > - That number is the "ID" of the cache layer before the error, and we can access it as an image
 >    > 
 >    >
-> 2. Use the ID of the latest cached layer (copy/paste) for running the image interactively.
+> 2. Use the ID of the latest cached layer (copy/paste) for running that layer as an image interactively.
 >    > ~~~
 >    > ubuntu@vm:01_Docker$ docker run -it --rm e4ae93bc92f1
 >    > ~~~
@@ -587,7 +591,7 @@ In this second exercise, the building process will advance a bit further, but wi
 >    > - The use of an interactive session for this kind of checks is very practical
 >    > - The `-it` indicates interactive
 >    > - The `--rm` indicates docker to remove the running session (container) from the docker engine after exiting
->    > - (`--rm` removes the container, but not the image. The image is safe)
+>    > - (After exiting `--rm` removes the container, but not the image. The image is safe)
 >    > 
 >    > ~~~
 >    > root@202a0bf870bb:/opt/OpenFOAM#
@@ -597,6 +601,26 @@ In this second exercise, the building process will advance a bit further, but wi
 >
 > 3. Inside the container, check the contents of the `prefs.sh` file: 
 >
+>    > ~~~
+>    > root@202a0bf870bb:/opt/OpenFOAM# pwd
+>    > ~~~
+>    > {: .bash}
+>    > 
+>    > ~~~
+>    > /opt/OpenFOAM
+>    > ~~~
+>    > {: .output}
+>    > 
+>    > ~~~
+>    > root@202a0bf870bb:/opt/OpenFOAM# ls
+>    > ~~~
+>    > {: .bash}
+>    > 
+>    > ~~~
+>    > OpenFOAM-2.4.x  ThirdParty-2.4.x
+>    > ~~~
+>    > {: .output}
+>    > 
 >    > ~~~
 >    > root@202a0bf870bb:/opt/OpenFOAM# cd OpenFOAM-2.4.x/etc
 >    > root@202a0bf870bb:/opt/OpenFOAM/OpenFOAM-2.4.x/etc# cat prefs.sh
@@ -655,7 +679,7 @@ In this second exercise, the building process will advance a bit further, but wi
 >    > unset cleaned foamClean foamInstall foamOldDirs
 >    > ~~~
 >    > {: .output}
->    > - Setting is correct
+>    > - The only real active definition of `foamInstall` is correct, the rest are commented
 >    > 
 >    > ~~~
 >    > root@202a0bf870bb:/opt/OpenFOAM/OpenFOAM-2.4.x/etc# grep "PROJECT_USER_DIR" bashrc
@@ -667,7 +691,7 @@ In this second exercise, the building process will advance a bit further, but wi
 >    > export WM_PROJECT_USER_DIR="/home/ofuser/OpenFOAM/ofuser-$WM_PROJECT_VERSION"
 >    > ~~~
 >    > {: .output}
->    > - Setting is correct
+>    > - The setting of `WM_PROJECT_USER_DIR` is correct
 >
 > 5. Exit the interactive session
 >    >
@@ -678,12 +702,18 @@ In this second exercise, the building process will advance a bit further, but wi
 >    > 
 {: .challenge}
 
-## G. Final remarks on Docker
+<p>&nbsp;</p>
+
+## F. Final remarks on the building of OpenFOAM containers at Pawsey with Docker
+
+- Pawsey maintains several images that can be used for running applications or for building new ones
 
 - The official maintained Dockerfile for OpenFOAM-2.4.x is in the PawseySC GitHUB:
 [https://github.com/PawseySC/pawsey-containers](https://github.com/PawseySC/pawsey-containers)
 
 - Use existing Dockerfiles (and instructions from the Developers and OpenFOAM wiki: [https://openfoamwiki.net/index.php/Category:Installing_OpenFOAM_on_Linux](https://openfoamwiki.net/index.php/Category:Installing_OpenFOAM_on_Linux)) to build your own container 
+
+- The DockerHub repository (where the corresponding Docker images are) is: [https://hub.docker.com/u/pawsey](https://hub.docker.com/u/pawsey)
 
 > ## The `Dockerfile` file (some other sections for discussion)
 >
@@ -720,8 +750,8 @@ In this second exercise, the building process will advance a bit further, but wi
 >    ~~~
 >    {: .bash}
 >    - **(This will not work in the current state of the exercise)**, but still its good to have the instruction here
->    - Without the `-f` option, then the `Dockerfile` will be used by default
->    - The full built of the `pawsey/openfoam:2.4.x` took around 6 hours
+>    - Without the `-f` option, then a file named `Dockerfile` will be used by default
+>    - The full building process of the `pawsey/openfoam:2.4.x` takes around 6 hours
 >   
 >    ~~~
 >    Sending build context to Docker daemon  16.38kB^M^M
@@ -752,7 +782,7 @@ In this second exercise, the building process will advance a bit further, but wi
 >    
 > 2. Then we test that the internal OpenFOAM installation works properly
 >    - This can easily be checked with an interactive session
->    - **(Here we test with the `pawsey/openfoam:2.4.x` as the myuser container does not exist yet)**
+>    - **(Here we test with the `pawsey/openfoam:2.4.x` because the `myusers/openfoam:2.4.x` image does not exist yet)**
 >    
 >    ~~~
 >    ubuntu@vm:01_Docker$ docker run -it --rm pawsey/openfoam:2.4.x
@@ -783,6 +813,8 @@ In this second exercise, the building process will advance a bit further, but wi
 >    - Usually you do not want to execute the tutorials from the original directory (because you can modify your original source)
 >    - But in this case it is fine because changes will be lost when exiting the container
 >    - If you want to keep the results, you would need to extract the tutorial into a local directory first
+>    - And execute the containerised solver from there
+>    - (Refer to the Docker documentation if you want to use the Docker image in your computer or elsewhere)
 >    
 >    ~~~
 >    Running blockMesh on /opt/OpenFOAM/OpenFOAM-2.4.x/tutorials/incompressible/pimpleFoam/channel395
@@ -800,10 +832,13 @@ In this second exercise, the building process will advance a bit further, but wi
 >
 > 3. Finally, push your container to DockerHub. **(myuser needs an account in DockerHub first)**
 >
+>    - For example:
 >    ~~~
 >    ubuntu@vm:01_Docker$ docker push myuser/openfoam:2.4.x
 >    ~~~
 >    {: .bash}
+>    - **(again, the command will not work. You need the image `myuser/openfoam:2.4.x` to exist)**
+>
 >    
 >    ~~~
 >    The push refers to repository [docker.io/myuser/openfoam]
@@ -827,9 +862,9 @@ In this second exercise, the building process will advance a bit further, but wi
 >    - Again, this may not work at this stage of the exercise because the full image has not been created
 >    - You would also need a DockerHub account to be allowed to push images
 >
-{: .callout}
+{: .discussion}
 
-## H. Converting the container into Singularity format
+## G. Converting the container into Singularity format
 
 First, lets take a look into the `Singularity.def` definition file:
 
@@ -846,7 +881,8 @@ First, lets take a look into the `Singularity.def` definition file:
 > ~~~
 > {: .bash}
 > - This is the whole file! Very simple!
-> - The singularity image will be built from the Pawsey one
+> - The singularity image will be built from the Pawsey one: `pawsey/openfoam:2.4.x`
+> - The image in the `From:` command need to exist in the DockerHub registry (repository)
 > - The first two lines in the `%post` section instructs the builder to use `bash` as the shell
 > - This is needed because OpenFOAM scripts have some instructions that can only be interpreted by `bash` (called bash-isms by geeks)
 > - The last line writes the instruction of sourcing the bashrc file every time the container is used
@@ -872,6 +908,7 @@ First, lets take a look into the `Singularity.def` definition file:
 >    ~~~
 >    {: .bash}
 >    - You must be have sudo/root privileges to execute `build`
+>    - conversion may take a while. In the meantime let's have a break (or some discussion, depending on the time)
 >    
 >    ~~~
 >    INFO:    Starting build...
@@ -910,15 +947,19 @@ First, lets take a look into the `Singularity.def` definition file:
 >    ~~~
 >    {: .bash}
 >    
-> 3. Test a solver
+{: .discussion}
+
+> ## Test OpenFOAM tools running from the interior of the container (internal MPICH)
+>
+> 1. Run the container interactively:
 >    
 >    ~~~
->    ubuntu@vm:02_*Singularity$ mkdir run
->    ubuntu@vm:02_*Singularity$ singularity run -B ./run:/home/ofuser-2.4.x/run openfoam-2.4.x-myuser.sif
+>    ubuntu@vm:02_*Singularity$ singularity run openfoam-2.4.x-myuser.sif
 >    ~~~
 >    {: .bash}
 >    
 >    ~~~
+>    Singularity> mkdir run
 >    Singularity> cd run
 >    Singularity> cp -r /opt/OpenFOAM/OpenFOAM-2.4.x/tutorials/incompressible/pimpleFoam/channel395 .
 >    Singularity> cd channel395
@@ -931,19 +972,140 @@ First, lets take a look into the `Singularity.def` definition file:
 >    ~~~
 >    {: .output}
 >
+> 2. Create the mesh
 >    ~~~
->    Singularity> ./Allrun 
+>    Singularity> blockMesh
 >    ~~~
 >    {: .bash}
 >
 >    ~~~
->    Running blockMesh on /home/ubuntu/pawseyTraining/containers-openfoam-workshop-scripts/04_buildingAnOpenFOAMContainer/openfoam-2.4.x/02_PortingToSingularity/run/channel395
->    Running decomposePar on /home/ubuntu/pawseyTraining/containers-openfoam-workshop-scripts/04_buildingAnOpenFOAMContainer/openfoam-2.4.x/02_PortingToSingularity/run/channel395
->    Running pimpleFoam in parallel on /home/ubuntu/pawseyTraining/containers-openfoam-workshop-scripts/04_buildingAnOpenFOAMContainer/openfoam-2.4.x/02_PortingToSingularity/run/channel395 using 5 processes
+>    /*---------------------------------------------------------------------------*\
+>    | =========                 |                                                 |
+>    | \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+>    |  \\    /   O peration     | Version:  2.4.x                                 |
+>    |   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+>    |    \\/     M anipulation  |                                                 |
+>    \*---------------------------------------------------------------------------*/
+>    Build  : 2.4.x-2b147f41daf9
+>    Exec   : blockMesh
+>    .
+>    .
+>    .
+>    ----------------
+>      patch 0 (start: 175300 size: 1200) name: bottomWall
+>      patch 1 (start: 176500 size: 1200) name: topWall
+>      patch 2 (start: 177700 size: 1000) name: sides1_half0
+>      patch 3 (start: 178700 size: 1000) name: sides1_half1
+>      patch 4 (start: 179700 size: 1000) name: sides2_half0
+>      patch 5 (start: 180700 size: 1000) name: sides2_half1
+>      patch 6 (start: 181700 size: 750) name: inout1_half0
+>      patch 7 (start: 182450 size: 750) name: inout1_half1
+>      patch 8 (start: 183200 size: 750) name: inout2_half0
+>      patch 9 (start: 183950 size: 750) name: inout2_half1
+>    
+>    End
 >    ~~~
 >    {: .output}
->    - The solver may take several minutes to finish.
->    - Use `<Ctrl-c>` to kill the solver
+>    
+> 3. Run the decomposer
+>
+>    ~~~
+>    Singularity> decomposePar
+>    ~~~
+>    {: .bash}
+>    
+>    ~~~
+>    /*---------------------------------------------------------------------------*\
+>    | =========                 |                                                 |
+>    | \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+>    |  \\    /   O peration     | Version:  2.4.x                                 |
+>    |   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+>    |    \\/     M anipulation  |                                                 |
+>    \*---------------------------------------------------------------------------*/
+>    Build  : 2.4.x-2b147f41daf9
+>    Exec   : decomposePar
+>    .
+>    .
+>    .
+>    Time = 0
+>    
+>    Processor 0: field transfer
+>    Processor 1: field transfer
+>    Processor 2: field transfer
+>    Processor 3: field transfer
+>    Processor 4: field transfer
+>    
+>    End.
+>    ~~~
+>    {: .output}
+>    
+> 4. Modify the `system/controlDict` to write results every time step (just for this particular test)
+>    - set the line of writeInterval to read:
+>    - `writeInterval  1;`
+>    - You can edit the file, or simply use the following `sed` replacement:
+>
+>    ~~~
+>    Singularity> sed -i 's,^writeInterval.*,writeInterval  1;,' system/controlDict 
+>    ~~~
+>    {: .bash}
+>
+>    - Check the setting:
+>    ~~~
+>    Singularity> grep "writeInterval" system/controlDict 
+>    ~~~
+>    {: .bash}
+>
+>    ~~~
+>    writeInterval  1;
+>    ~~~
+>    {: .output}
+>
+> 5. Run the parallel solver with the internal MPICH
+>
+>    ~~~
+>    Singularity> mpiexec -n 5 pimpleFoam -parallel
+>    ~~~
+>    {: .bash}
+>    
+>    ~~~
+>    /*---------------------------------------------------------------------------*\
+>    | =========                 |                                                 |
+>    | \\      /  F ield         | OpenFOAM: The Open Source CFD Toolbox           |
+>    |  \\    /   O peration     | Version:  2.4.x                                 |
+>    |   \\  /    A nd           | Web:      www.OpenFOAM.org                      |
+>    |    \\/     M anipulation  |                                                 |
+>    \*---------------------------------------------------------------------------*/
+>    Build  : 2.4.x-2b147f41daf9
+>    Exec   : pimpleFoam -parallel
+>    .
+>    .
+>    .
+>    Courant Number mean: 0.30276 max: 0.526366
+>    Time = 0.4
+>    
+>    PIMPLE: iteration 1
+>    smoothSolver:  Solving for Ux, Initial residual = 0.0112386, Final residual = 2.57986e-06, No Iterations 3
+>    smoothSolver:  Solving for Uy, Initial residual = 0.0600746, Final residual = 2.34423e-06, No Iterations 4
+>    smoothSolver:  Solving for Uz, Initial residual = 0.0576859, Final residual = 2.06087e-06, No Iterations 4
+>    Pressure gradient source: uncorrected Ubar = 0.133673, pressure gradient = -0.000891632
+>    GAMG:  Solving for p, Initial residual = 0.201055, Final residual = 0.00409835, No Iterations 2
+>    time step continuity errors : sum local = 5.70346e-06, global = -4.59793e-20, cumulative = -4.59793e-20
+>    Pressure gradient source: uncorrected Ubar = 0.133669, pressure gradient = -0.000868433
+>    GAMG:  Solving for p, Initial residual = 0.0314739, Final residual = 3.67096e-07, No Iterations 8
+>    time step continuity errors : sum local = 4.57115e-10, global = -5.07387e-20, cumulative = -9.6718e-20
+>    Pressure gradient source: uncorrected Ubar = 0.133668, pressure gradient = -0.000866965
+>    smoothSolver:  Solving for k, Initial residual = 0.0654047, Final residual = 1.25654e-06, No Iterations 3
+>    bounding k, min: 0 max: 0.000670144 average: 5.74343e-05
+>    ExecutionTime = 16.69 s  ClockTime = 40 s
+>    .
+>    .
+>    .
+>    ~~~
+>    {: .output}
+>    - The solver may take several around half an hour to finish
+>    - We do not have time to wait, so use `<Ctrl-c>` to kill the solver after a few time steps
+>
+> 5. Exit the container and check the results in your local disk
 >
 >    ~~~
 >    Singularity> exit
@@ -952,16 +1114,86 @@ First, lets take a look into the `Singularity.def` definition file:
 >
 >    ~~~
 >    ubuntu@vm:02_*Singularity$ cd run/channel395/
->    ubuntu@vm:02_*Singularity$ ls
+>    ubuntu@vm:channel395$ ls
 >    ~~~
 >    {: .bash}
 >
 >    ~~~
->    0      Allrun    log.blockMesh     log.pimpleFoam   log.reconstructPar  processor1  processor3  system
->    0.org  constant  log.decomposePar  log.postChannel  processor0          processor2  processor4
+>    0  0.org  Allrun  constant  processor0  processor1  processor2  processor3  processor4  system
 >    ~~~
 >    {: .output}
 >    
-> 4. Move the image to any system where you want to use it
+>    ~~~
+>    ubuntu@vm:channel395$ ls -lat processor*/
+>    ~~~
+>    {: .bash}
+>
+>    ~~~
+>    processor1/:
+>    total 32
+>    drwxr-xr-x  3 ubuntu ubuntu 4096 May 28 12:12 0.8
+>    drwxr-xr-x  8 ubuntu ubuntu 4096 May 28 12:11 .
+>    drwxr-xr-x  3 ubuntu ubuntu 4096 May 28 12:11 0.6
+>    drwxr-xr-x  3 ubuntu ubuntu 4096 May 28 12:11 0.4
+>    drwxr-xr-x  3 ubuntu ubuntu 4096 May 28 12:10 0.2
+>    drwxr-xr-x  2 ubuntu ubuntu 4096 May 28 11:40 0
+>    drwxr-xr-x 11 ubuntu ubuntu 4096 May 28 11:40 ..
+>    drwxr-xr-x  3 ubuntu ubuntu 4096 May 28 11:40 constant
+>    
+>    processor3/:
+>    total 32
+>    drwxr-xr-x  3 ubuntu ubuntu 4096 May 28 12:12 0.8
+>    drwxr-xr-x  8 ubuntu ubuntu 4096 May 28 12:11 .
+>    drwxr-xr-x  3 ubuntu ubuntu 4096 May 28 12:11 0.6
+>    drwxr-xr-x  3 ubuntu ubuntu 4096 May 28 12:11 0.4
+>    drwxr-xr-x  3 ubuntu ubuntu 4096 May 28 12:10 0.2
+>    drwxr-xr-x  2 ubuntu ubuntu 4096 May 28 11:40 0
+>    drwxr-xr-x 11 ubuntu ubuntu 4096 May 28 11:40 ..
+>    drwxr-xr-x  3 ubuntu ubuntu 4096 May 28 11:40 constant
+>    
+>    processor2/:
+>    total 32
+>    drwxr-xr-x  3 ubuntu ubuntu 4096 May 28 12:12 0.8
+>    drwxr-xr-x  8 ubuntu ubuntu 4096 May 28 12:11 .
+>    drwxr-xr-x  3 ubuntu ubuntu 4096 May 28 12:11 0.6
+>    drwxr-xr-x  3 ubuntu ubuntu 4096 May 28 12:11 0.4
+>    drwxr-xr-x  3 ubuntu ubuntu 4096 May 28 12:10 0.2
+>    drwxr-xr-x  2 ubuntu ubuntu 4096 May 28 11:40 0
+>    drwxr-xr-x 11 ubuntu ubuntu 4096 May 28 11:40 ..
+>    drwxr-xr-x  3 ubuntu ubuntu 4096 May 28 11:40 constant
+>    
+>    processor4/:
+>    total 32
+>    drwxr-xr-x  3 ubuntu ubuntu 4096 May 28 12:12 0.8
+>    drwxr-xr-x  8 ubuntu ubuntu 4096 May 28 12:11 .
+>    drwxr-xr-x  3 ubuntu ubuntu 4096 May 28 12:11 0.6
+>    drwxr-xr-x  3 ubuntu ubuntu 4096 May 28 12:11 0.4
+>    drwxr-xr-x  3 ubuntu ubuntu 4096 May 28 12:10 0.2
+>    drwxr-xr-x  2 ubuntu ubuntu 4096 May 28 11:40 0
+>    drwxr-xr-x  3 ubuntu ubuntu 4096 May 28 11:40 constant
+>    drwxr-xr-x 11 ubuntu ubuntu 4096 May 28 11:40 ..
+>    
+>    processor0/:
+>    total 32
+>    drwxr-xr-x  3 ubuntu ubuntu 4096 May 28 12:12 0.8
+>    drwxr-xr-x  8 ubuntu ubuntu 4096 May 28 12:11 .
+>    drwxr-xr-x  3 ubuntu ubuntu 4096 May 28 12:11 0.6
+>    drwxr-xr-x  3 ubuntu ubuntu 4096 May 28 12:11 0.4
+>    drwxr-xr-x  3 ubuntu ubuntu 4096 May 28 12:10 0.2
+>    drwxr-xr-x  2 ubuntu ubuntu 4096 May 28 11:40 0
+>    drwxr-xr-x 11 ubuntu ubuntu 4096 May 28 11:40 ..
+>    drwxr-xr-x  3 ubuntu ubuntu 4096 May 28 11:40 constant
+>    ~~~
+>    {: .output}
 >
 {: .discussion} 
+
+<p>&nbsp;</p>
+
+> ## The image is good to go!
+> - Copy it to any system where you want to use it
+>
+{: .callout}
+
+<p>&nbsp;</p>
+
