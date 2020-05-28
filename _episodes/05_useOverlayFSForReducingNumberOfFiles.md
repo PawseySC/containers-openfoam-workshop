@@ -13,74 +13,121 @@ keypoints:
 - Last point may seem like a killer, but extraction and reconstruction may be performed in small batches avoiding the appearence of many files at the same time for the Meta Data Server.
 ---
 
-Due to multiple factors, users may have the need to keep using old versions of OpenFOAM.
+## Meaning of icons and colours (just for the context of this tutorial)
 
-Versions of OpenFOAM lower-than OpenFOAM-6 and OpenFOAM-v1812 do not count with a functional `fileHandler collated` + `ioRanks` option.
-Therefore, there is not other option but the standard `uncollated` fileHandling.
+> ## Series of steps (commands) to be typed in users terminal (guided by instructor)
+>
+{: .discussion}
 
-As metioned previously, standard uncollated fileHandling has the danger of producing a large amount of files.
-It is not uncommon for some of our users to reach the order of millions of files.
+> ## Series of steps (commands) to be typed in users terminal by themselves (in breakout room)
+>
+{: .challenge}
 
-When users hit the presence of a large amount of files, they start facing problems for handling them.
+> ## Collapsed blocks, with additional information, important parts of the scripts or pre-executed steps
+> No action required
+{: .solution}
 
-But the main larger problem is the **overload of the metadata server** of our shared file systems, which affect the performance of the supercomputers themselves, affecting all of our user base.
+> ## The rest are just blocks ...
+>
+{: .callout}
 
-Currently, Pawsey restricts the quota for the users to a maximum of 1 million files/directories (ioNodes). But many still have the need for a larger quota.
+> ## ...                     with general information
+>
+{: .prereq}
 
-One option to reduce the amount of files that the system observes is the use of **virtual file systems**.
+## 0.Introduction
 
-These virtual file systems are indeed a single file from the metadata server point of view. But the virtual file system is able to handle thousands of files at the interior.
+> ## The large amount of files problem
+> - The production of a large amount of result files has been a major problem for Supercomputing centres due to the overloading of their file management systems
+> - The problem is major because it affects performace for the whole system (affecting all the user base)
+> - The collated option is of great benefit for reducing the amount of result files and solving this problematic
+>     - `fileHandler collated` + `ioRanks`
+> - But it is only fully functional for versions greater-than or equal to
+>       - OpenFOAM-6 (from OpenFOAM foundation)
+>       - and OpenFOAM-v1812 (from ESI-OpenCFD)
+> - For other versions/flavours of OpenFOAM this setting is not functional or does not exists at all
+>
+{: .prereq}
 
-Here we exemplify the use of OverlayFS virtual file systems (that singularity containers can read and write) to save OpenFOAM results inside.
+> ## Then why use other versions/flavours ?
+>
+> - Because users have a complicated case defined already for another version/flavour
+> - Because users may have own tools written for another version/flavour 
+> - Because users may be using additional tools (like waves2Foam or CFDEM) that were written for another version/flavour 
+> - Because only that other flavour (mainly **Foam-extend**) may contain the solver/tool the user needs 
+> - And, of course, to update those case settings/tools to work with recent versions/flavours of OpenFOAM would require extensive effort and time investment
+>
+{: .callout}
 
-In this way, the amount of files observed by our metadata server is reduced, while the user expands their capability of saving many result files (even in the order of millions). The example is managed with a series of scripts:
+> ## What can Pawsey do to help their user base ?
+>
+> - We need to avoid the overload of our file system in order to keep a performant file system
+> - Files older than 30 days are purged from `/scratch`
+> - We have already restricted the user's quota to a maximum of 1 Million inodes (files/directories)
+> - Users would need to modify their workflow (solution-analysis-deletion) so that quota is not exceeded
+> - Use of virtual file systems to store files within (**Thanks to Dr. Andrew King for the suggestion!**)
+>
+{: .prereq}
 
-- cd into the directory where the provided scripts are. In this case we'll use OpenFOAM-2.4.x.
+> ## Virtual file systems super basics
+>
+> - Extriclty speaking, it is much more complicated than this, but we can simplyfy the concept as:
+>     - a big single file that can be formatted to keep several files in its interior
+> - The shared metadata server will only observe one single big file
+> - Here we make use of **OverlayFS** due to its proved correct behaviour when working with Singularity
+> - But there may be some other technologies/formats/options (like **FUSE**)
+{: .callout}
 
-~~~
-zeus-1:~> cd $MYSCRATCH/pawseyTraining/containers-openfoam-workshop-scripts
-zeus-1:*-scripts> cd 05_useOverlayFSForReducingNumberOfFiles/example_OpenFOAM-2.4.x
-zeus-1:*-2.4.x> ls
-~~~
-{: .bash}
+> ## 0.I Accessing the scripts for this episode
+>
+> In this whole episode, we make use of a series of scripts to cover a typical compilation/execution workflow. Lets start by listing the scripts.
+>
+> 1. cd into the directory where the provided scripts are. In this case we'll use OpenFOAM-v1912.
+> 
+>    ~~~
+>    zeus-1:~> cd $MYSCRATCH/pawseyTraining/containers-openfoam-workshop-scripts
+>    zeus-1:*-scripts> cd 05_useOverlayFSForReducingNumberOfFiles/example_OpenFOAM-2.4.x
+>    zeus-1:*-2.4.x> ls
+>    ~~~
+>    {: .bash}
+>    
+>    ~~~
+>    A.extractAndAdaptTutorial.sh  caseSettingsFoam.sh      D.runFoam.sh                 imageSettingsSingularity.sh
+>    B.decomposeFoam.sh            C.setupOverlayFoam.sh    E.reconstructFromOverlay.sh  run
+>    ~~~
+>    {: .output}
+>
+{: .discussion}
 
-~~~
-A.extractAndAdaptTutorial.sh  caseSettingsFoam.sh      D.runFoam.sh                 imageSettingsSingularity.sh
-B.decomposeFoam.sh            C.setupOverlayFoam.sh    E.reconstructFromOverlay.sh  run
-~~~
-{: .output}
+<p>&nbsp;</p>
 
-Quickly read one of the scripts, for example `E.reconstructFromOverlay.sh`.
-We recommed the following text readers:
-- `view` (navigate with up and down arrows, use `:q` or `:q!` to quit)
-- `less` (navigate with up and down arrows, use `q` to quit) (this one does not have syntax highlight)
+> ## Sections and scripts for this episode
+>
+> - In the following sections, there are instructions for submitting these job scripts for execution in the supercomputer one by one:
+>    - `A.extractAndAdaptTutorial.sh` **(already pre-executed)** is for copying an adapting a case to solve
+>    - `B.decomposeFoam.sh` is decomposing the case to solve
+>    - `C.setupOverlayFoam.sh` is for creating the OverlayFS files to store the result
+>    - `D.runFoam.sh` is for executing the solver (and writing results to the interior of the overlay files) 
+>    - `E.reconstructFromOverlay.sh` is for reconstructing a result time initially inside the overlay files
+>
+{: .prereq}
 
-~~~
-zeus-1:*-2.4.x> view D.runFoam.sh
-~
-~
-~
-:q
-zeus-1*-2.4.x>
-~~~
-{: .bash}
+<p>&nbsp;</p>
 
-In the following sections, there are instructions for submitting these job scripts for execution in the supercomputer one by one. 
-
-Very similar submission steps are executed in each of the stages.
-So, in order to avoid too much repetition and save time for important discussions,
-the section "A. Extract and adapt tutorial" has already been executed for you.
-
-We'll start our explanation at section "B.Decomposition" but concentrate our efforts on section "C. Setup OverlayFS".
-Users will then move to section D. and proceed by themselves afterwards.
-
-At the end, we'll discuss the main instructions within the scripts and the whole process.
+> ## So how will this episode flow?
+> - The script of section "A" has already been pre-executed.
+> - We'll start our explanation at section "B.Decomposition"
+> - but will concentrate our efforts on section "C. Setup OverlayFS".
+> - Users will then move to section D. and proceed by themselves afterwards.
+> - At the end, we'll discuss the main instructions within the scripts and the whole process.
+>
+{: .callout}
 
 <p>&nbsp;</p>
 
 ## A. Extract and adapt the tutorial to be solved **- [Pre-Executed]**
    
-> ## The `A.extractAndAdaptTutorial.sh` script (main sections to be discussed):
+> ## The `A.extractAndAdaptTutorial.sh` script (main parts to be discussed):
 >
 > ~~~
 > #1. Loading the container settings, case settings and auxiliary functions (order is important)
@@ -132,7 +179,7 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 > {: .solution}
 {: .solution}
 
-> ## Steps for dealing with the extraction and adaptation of the case to be solved
+> ## A.I Steps for dealing with the extraction and adaptation of the case to be solved
 > 1. Submit the job (no need for reservation as the script uses the `copyq` partition)
 > 
 >    ~~~
@@ -236,12 +283,12 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 > {: .bash}
 {: .solution}
 
-> ## Steps for dealing with decomposition:
+> ## B.I Steps for dealing with decomposition:
 > 
 > 1. Submit the decomposition script from the scripts directory (use the reservation for the workshop if available)
 >
 >    ~~~
->    zeus-1:*-2.4.x> myReservation=XXX
+>    zeus-1:*-2.4.x> myReservation=containers
 >    ~~~
 >    {: .bash}
 > 
@@ -285,7 +332,7 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 > 3. You should also check for success/errors in:
 >    -  the slurm output file: `slurm-<SLURM_JOBID>.out`
 >    -  the log files created when executing the OpenFOAM tools in: `./run/channel395/logs/pre/`
-{: .challenge}
+{: .discussion}
 
 <p>&nbsp;</p>
 
@@ -426,6 +473,7 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 >    ~~~
 >    zeus-1:*-2.4.x> sbatch --reservation=$myReservation C.prepareOverlayFoam.sh 
 >    ~~~
+>    {: .bash}
 >    
 >    ~~~
 >    Submitted batch job 4642685 on cluster zeus
@@ -466,7 +514,7 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 >    drwxr-s---+ 3 espinosa pawsey0001 4096 May 24 20:38 ..
 >    ~~~
 >    {: .output}
-{: .challenge}
+{: .discussion}
 
 <p>&nbsp;</p>
 
@@ -724,6 +772,15 @@ At the end, we'll discuss the main instructions within the scripts and the whole
 {: .challenge}
 
 <p>&nbsp;</p>
+
+> ## X. A more elaborated control of the reconstruction
+> 
+> - We have already prepared scripts for another episode:
+>     - `06_advancedUseOfOverlayFS` with a more advanced bash scripting for controling reconstruction
+> - The notes for that episode are not ready yet, but we encourage users to read the scripts and execute them
+> - (Take into account that these scripts make use of bash functions defined in the `auxiliaryScripts/ofContainersOverlayFunctions.sh` file
+> 
+{: .solution}
 
 ## Z. Further notes on how to use OpenFOAM and OpenFOAM containers at Pawsey
 
