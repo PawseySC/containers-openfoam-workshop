@@ -88,23 +88,23 @@ keypoints:
 >      - Do not get confused, the tutorial for OpenFOAM-2.4.x uses 5 subdomains (0,1,...,4)
 > 3. Create a writable OverlayFS file: `overlay0`
 >      - To create this writable OverlayFS file you will need an "ubuntu-based" container version **18.04 or higher**
-> 4. Copy that file into the needed number of OverlayFS: `overlay1`, `overlay2` ... `overlay4`
+> 4. Copy that file to create the needed replicas of OverlayFS: `overlay1`, `overlay2` ... `overlay4`
 >    <p>&nbsp;</p>
 > 5. For each `ovelayN` create a corresponding `processorN` directory:
 >      - `/overlayOpenFOAM/run/channel395/processor0` in `overlay0`
 >      - ...
 >      - `/overlayOpenFOAM/run/channel395/processor4` in `overlay4`
 >    <p>&nbsp;</p>
-> 7. For each `overlayN` copy the content of `bak.processorN` (decomposed initial conditions) into the `processorN` directories inside 
+> 6. For each `overlayN` copy the initial conditions and `constant` directory of `bak.processorN` into the `processorN` directories inside the `overlayN` file 
 >      - To make the copy you will need to use an "ubuntu-based" container to see the interior of the overlay files
 >    <p>&nbsp;</p>
-> 8. In the case directory, create soft-links named `processorN` that point to the internal directories:
+> 7. In the case directory, create soft-links named `processorN` that point to the internal directories:
 >      - `ln -s processor0 /overlayOpenFOAM/run/channel395/processor0` 
 >      - ...
 >      - `ln -s processor4 /overlayOpenFOAM/run/channel395/processor4` 
 >      - **The links will appear broken to the host system, but functional to the containers that load the OverlayFS files**
 >    <p>&nbsp;</p>
-> 9. Execute the solver in hybrid-mode, allowing for each task MPI task (identified with `SLURM_PROCID` to mount the `overlay${SLURM_PROCID}`
+> 8. Execute the solver in hybrid-mode, allowing for each task MPI task (identified with `SLURM_PROCID` to mount the `overlay${SLURM_PROCID}`
 >      - Each MPI task spawned by `srun` will have an id: `SLURM_PROCID` and values go 0,1,...,4
 >      - Then, if SLURM_PROCID=0, then the mounted overlay is `overlay0`, etc.
 >      - Task 0 will then read/write to `processor0` which is a link that points to `/overlayOpenFOAM/run/channel395/processor0` 
@@ -113,6 +113,16 @@ keypoints:
 >
 {: .keypoints}
 
+> ## No, unfortunately a container cannot mount more than 1 OverlayFS file at the same time
+> - Yes, this implies that the results need to be copied back to the host file system before reconstruction
+> - This is the inverse operation to point 6. (above)
+> - But in order to avoid the presence of many files in the host, this should be done by small batches:
+>    1. Copy small batch of results from the interior to the `bak.processorN` directories
+>    2. Now create `processorN` soft links to point to `bak.processorN` directories 
+>    3. Reconstruct that small batch
+>    4. Remove the reconstructed times from the `bak.processorN` directories
+>
+{: .testimonial}
 <p>&nbsp;</p>
 
 > ## 0.I Accessing the scripts for this episode
