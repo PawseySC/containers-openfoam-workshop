@@ -35,6 +35,8 @@ keypoints:
 >
 {: .prereq}
 
+<p>&nbsp;</p>
+
 ## 0.Introduction
 
 > ## The large amount of files problem
@@ -77,6 +79,41 @@ keypoints:
 > - Here we make use of **OverlayFS** due to its proved correct behaviour when working with Singularity
 > - But there may be some other technologies/formats/options (like **FUSE**)
 {: .callout}
+
+<p>&nbsp;</p>
+
+> ## Main logic in this idea:
+> 1. Proceed with settings and decomposition of your case as normal
+> 2. Rename the `processor0`, `processor1` ... `processor4` to `bak.processor0`, `bak.processor1` ... `bak.processor4`
+>      - Do not get confused, the tutorial for OpenFOAM-2.4.x uses 5 subdomains (0,1,...,4)
+> 3. Create a writable OverlayFS file: `overlay0`
+>      - To create this writable OverlayFS file you will need an "ubuntu-based" container version **18.04 or higher**
+> 4. Copy that file into the needed number of OverlayFS: `overlay1`, `overlay2` ... `overlay4`
+>    <p>&nbsp;</p>
+> 5. For each `ovelayN` create a corresponding `processorN` directory:
+>      - `/overlayOpenFOAM/run/channel395/processor0` in `overlay0`
+>      - ...
+>      - `/overlayOpenFOAM/run/channel395/processor4` in `overlay4`
+>    <p>&nbsp;</p>
+> 7. For each `overlayN` copy the content of `bak.processorN` (decomposed initial conditions) into the `processorN` directories inside 
+>      - To make the copy you will need to use an "ubuntu-based" container to see the interior of the overlay files
+>    <p>&nbsp;</p>
+> 8. In the case directory, create soft-links named `processorN` that point to the internal directories:
+>      - `ln -s processor0 /overlayOpenFOAM/run/channel395/processor0` 
+>      - ...
+>      - `ln -s processor4 /overlayOpenFOAM/run/channel395/processor4` 
+>      - **The links will appear broken to the host system, but functional to the containers that load the OverlayFS files**
+>    <p>&nbsp;</p>
+> 9. Execute the solver in hybrid-mode, allowing for each task MPI task (identified with `SLURM_PROCID` to mount the `overlay${SLURM_PROCID}`
+>      - Each MPI task spawned by `srun` will have an id: `SLURM_PROCID` and values go 0,1,...,4
+>      - Then, if SLURM_PROCID=0, then the mounted overlay is `overlay0`, etc.
+>      - Task 0 will then read/write to `processor0` which is a link that points to `/overlayOpenFOAM/run/channel395/processor0` 
+>      - The same for the other tasks
+>    <p>&nbsp;</p>
+>
+{: .keypoints}
+
+<p>&nbsp;</p>
 
 > ## 0.I Accessing the scripts for this episode
 >
@@ -467,7 +504,7 @@ keypoints:
 > {: .bash}
 {: .solution}
 
-> ## Steps for dealing with the Overlay setup
+> ## C.I Steps for dealing with the Overlay setup
 > 1. Submit the solver script (from the scripts directory)
 > 
 >    ~~~
@@ -567,7 +604,7 @@ keypoints:
 > {: .bash}
 {: .solution}
 
-> ## Steps for dealing with the solver
+> ## D.I Steps for dealing with the solver
 > 1. Submit the solver script (from the scripts directory)
 > 
 >    ~~~
@@ -713,6 +750,8 @@ keypoints:
 > ~~~
 > {: .bash}
 > - To be able to reconstruct a specific time, information needs to be transferred again to the `bak.processorN` directories
+>
+> <p>&nbsp;</p>
 > 
 > ~~~
 > #5. Point the soft links to the bak.processor* directories
@@ -726,6 +765,8 @@ keypoints:
 > {: .bash}
 > - Now new `processorN` soft links will point towards the `bak.processorN` physical directories
 >
+> <p>&nbsp;</p>
+> 
 > ~~~
 > #6. Reconstruct the indicated time
 > echo "Start reconstruction"
@@ -738,7 +779,7 @@ keypoints:
 > {: .bash}
 {: .solution}
 
-> ## Steps for dealing with reconstruction:
+> ## E.I Steps for dealing with reconstruction:
 > 
 > 1. Submit the reconstruction script (from the scripts directory)
 > 

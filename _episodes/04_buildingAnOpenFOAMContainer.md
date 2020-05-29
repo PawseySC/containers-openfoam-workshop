@@ -8,10 +8,12 @@ objectives:
 - Explain our current recommended process for building OpenFOAM containers
 keypoints:
 - Take it easy, be patient
-- Use existing `Dockerfile` examples and available guides to define your own recipe
-- We recommend to use Docker first for the recipe
-- and then convert the image to Singularity
-- Once you have the Singularity image, you can copy the file to your preferred location in `/group`
+- Use existing definition files examples and available guides to define the right installation recipe
+- Main difference in the standard OpenFOAM installation settings are:
+    - Avoiding the installation of OpenMPI
+    - Settings in `prefs.sh` for using `WM_MPLIB=SYSTEMMPI` (MPICH in this case) 
+    - Settings in `bashrc` for defining the new location for installation
+    - Settings in `bashrc` for defining `WM_PROJECT_USER_DIR`
 ---
 
 ## Meaning of icons and colours (just for the context of this tutorial)
@@ -279,7 +281,7 @@ You'll need to clone the git repository into your linux environment:
 >    > #Using bash from now on
 >    > SHELL ["/bin/bash", "-c"]
 >    > ~~~
->    > {: .bash}
+>    > {: .docker}
 >    > - Will build from the mpich-base image with MPICH-3.1.4 on Ubuntu-16.04
 >    > - The "docker-variable" (argument) `OFVERSION` holds the version of OpenFOAM to be built
 >    >
@@ -295,7 +297,7 @@ You'll need to clone the git repository into your linux environment:
 >    >  && apt-get clean all \
 >    >  && rm -r /var/lib/apt/lists/*
 >    > ~~~
->    > {: .bash}
+>    > {: .docker}
 >    > - Using apt-get to install some auxiliary tools
 >    >
 >    > <p>&nbsp;</p>
@@ -320,7 +322,7 @@ You'll need to clone the git repository into your linux environment:
 >    > ARG OFUSERDIR=/home/ofuser/OpenFOAM
 >    > WORKDIR $OFINSTDIR
 >    > ~~~
->    > {: .bash}
+>    > {: .docker}
 >    > - Beginning of the main section for the OpenFOAM installation
 >    > - Here we keep some comments about the guides used for defining this recipe
 >    > - In this case: [https://openfoam.org/download/2-4-0-source/](https://openfoam.org/download/2-4-0-source/)
@@ -362,7 +364,7 @@ You'll need to clone the git repository into your linux environment:
 >    >  && apt-get clean all \
 >    >  && rm -r /var/lib/apt/lists/*
 >    > ~~~
->    > {: .bash}
+>    > {: .docker}
 >    > - Here we install the auxiliary packages for OpenFOAM listed in the instructions guides
 >    > - With some differences (check comments by `AEG`)
 >    > - Like: **OpenMPI** is **NOT** installed
@@ -380,7 +382,7 @@ You'll need to clone the git repository into your linux environment:
 >    > RUN git clone git://github.com/OpenFOAM/OpenFOAM-${OFVERSIONGIT}.git \
 >    >  && git clone git://github.com/OpenFOAM/ThirdParty-${OFVERSIONGIT}.git
 >    > ~~~
->    > {: .bash}
+>    > {: .docker}
 >    > - Cloning the source directories for OpenFOAM installation
 >    {: .solution}
 >
@@ -452,21 +454,20 @@ You'll need to clone the git repository into your linux environment:
 
 <p>&nbsp;</p>
 
-## E. Updating the OpenFOAM settings 
+## E. More on the Dockerfile
 
-- For the OpenFOAM installation to understand the use of the system-MPI (MPICH in this case), we need to modify the default settings
+> ## Non-default settings in the installation are:
+> - For the OpenFOAM installation to understand the use of the system-MPI (MPICH in this case), we need to modify the default settings
+> 
+> - We also need to modify the indication for the path of installation
+> 
+> - And the indication for the path where user's solvers and development will be stored
+> 
+> - All those setting need to be indicated in the files `bashrc` and `prefs.sh`
+> 
+{: .callout}
 
-- We also need to modify the indication for the path of installation
-
-- And the indication for the path where user's solvers and development will be stored
-
-- All those setting need to be indicated in the files `bashrc` and `prefs.sh`
-
-<p>&nbsp;</p>
-
-Let's take a look to the second Dockerfile (`Dockerfile.02`)
-
-> ## The `Dockerfile.02` file (main sections for discussion)
+> ## The `Dockerfile.02` file (main parts for discussion)
 >
 > ~~~
 > #...........
@@ -474,7 +475,7 @@ Let's take a look to the second Dockerfile (`Dockerfile.02`)
 > ARG OFPREFS=${OFINSTDIR}/OpenFOAM-${OFVERSION}/etc/prefs.sh
 > ARG OFBASHRC=${OFINSTDIR}/OpenFOAM-${OFVERSION}/etc/bashrc
 > ~~~
-> {: .bash}
+> {: .docker}
 > - We'll make use of these variables (arguments) to refer to the `prefs.sh` and `bashrc` OpenFOAM settings files
 >
 > <p>&nbsp;</p>
@@ -498,7 +499,7 @@ Let's take a look to the second Dockerfile (`Dockerfile.02`)
 >  && echo 'export MPI_ARCH_LIBS="-L${MPI_ROOT}/lib${WM_COMPILER_LIB_ARCH} -L${MPI_ROOT}/lib -lmpich -lrt"' >> ${OFPREFS} \
 >  && echo ''
 > ~~~
-> {: .bash}
+> {: .docker}
 > - Using echo command to write the settings into the `prefs.sh` file
 >
 > <p>&nbsp;</p>
@@ -515,7 +516,7 @@ Let's take a look to the second Dockerfile (`Dockerfile.02`)
 >  && sed -i '0,/^export WM_PROJECT_USER_DIR/s//# export WM_PROJECT_USER_DIR/' ${OFBASHRC} \
 >  && echo ''
 > ~~~
-> {: .bash}
+> {: .docker}
 > - Using `sed` command to replace settings in the `bashrc` file
 >
 > <p>&nbsp;</p>
@@ -533,7 +534,7 @@ In this second exercise, the building process will advance a bit further, but wi
 > RUN StopHere #Trick for stopping the recipe at this point
 > #...........
 > ~~~
-> {: .bash}
+> {: .docker}
 > - We can use this trick to stop the building process at some point and check the installation up to there
 > - I like to use this trick instead of commenting the rest of the Dockerfile
 > - Building process will end with an error, but previous commands are cached in layers
@@ -681,6 +682,8 @@ In this second exercise, the building process will advance a bit further, but wi
 >    > {: .output}
 >    > - The only real active definition of `foamInstall` is correct, the rest are commented
 >    > 
+>    > <p>&nbsp;</p>
+>    >
 >    > ~~~
 >    > root@202a0bf870bb:/opt/OpenFOAM/OpenFOAM-2.4.x/etc# grep "PROJECT_USER_DIR" bashrc
 >    > ~~~
@@ -723,7 +726,9 @@ In this second exercise, the building process will advance a bit further, but wi
 >  && cd $WM_THIRD_PARTY_DIR \
 >  && ./Allwmake 2>&1 | tee log.Allwmake
 > ~~~
-> {: .bash}
+> {: .docker}
+>
+> <p>&nbsp;</p>
 >
 > ~~~
 > #OpenFOAM compilation 
@@ -733,7 +738,7 @@ In this second exercise, the building process will advance a bit further, but wi
 >  && export QT_SELECT=qt4 \
 >  && ./Allwmake 2>&1 | tee log.Allwmake
 > ~~~
-> {: .bash}
+> {: .docker}
 > - Always source the `bashrc` file (in this case using the argument `OFBASHRC`) before compilation steps in a layer
 > - This is because environment settings are lost after each `RUN` command
 > - The only way to keep the environment variables is to apply a `ENV` command for each of the OpenFOAM variables, which is a very tedious process
@@ -823,7 +828,7 @@ In this second exercise, the building process will advance a bit further, but wi
 >    ~~~
 >    {: .output}
 >    - Everything looks fine.
->    - This may take several minutes. Use `<Ctrl-C>` to kill the solver
+>    - This may take several minutes (~15 to ~30 min). Use `<Ctrl-C>` to kill the solver
 >    
 >    ~~~
 >    ofuser@49146943821c:channel395$ exit
@@ -879,7 +884,7 @@ First, lets take a look into the `Singularity.def` definition file:
 > /bin/ln -s /bin/bash /bin/sh
 > echo ". /opt/OpenFOAM/OpenFOAM-2.4.x/etc/bashrc" >> $SINGULARITY_ENVIRONMENT
 > ~~~
-> {: .bash}
+> {: .singularity}
 > - This is the whole file! Very simple!
 > - The singularity image will be built from the Pawsey one: `pawsey/openfoam:2.4.x`
 > - The image in the `From:` command need to exist in the DockerHub registry (repository)
@@ -1102,7 +1107,7 @@ First, lets take a look into the `Singularity.def` definition file:
 >    .
 >    ~~~
 >    {: .output}
->    - The solver may take several around half an hour to finish
+>    - The solver may take several minutes (~10 to ~20 min)
 >    - We do not have time to wait, so use `<Ctrl-c>` to kill the solver after a few time steps
 >
 > 5. Exit the container and check the results in your local disk
