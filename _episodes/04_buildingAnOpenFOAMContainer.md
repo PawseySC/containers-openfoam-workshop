@@ -16,27 +16,6 @@ keypoints:
     - Settings in `bashrc` for defining `WM_PROJECT_USER_DIR`
 ---
 
-## Meaning of icons and colours (just for the context of this tutorial)
-
-> ## Series of steps (commands) to be typed in users terminal (guided by instructor)
->
-{: .discussion}
-
-> ## Series of steps (commands) to be typed in users terminal by themselves (in breakout room)
->
-{: .challenge}
-
-> ## Collapsed blocks, with additional information, important parts of the scripts or pre-executed steps
-> No action required
-{: .solution}
-
-> ## The rest are just blocks ...
->
-{: .callout}
-
-> ## ...                     with general information
->
-{: .prereq}
 
 ## 0. Introduction
 

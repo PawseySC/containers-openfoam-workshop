@@ -9,39 +9,17 @@ objectives:
 keypoints:
 - Singularity can deal with an OverlayFS, but only one OverlayFS can be mounted per container instance
 - As each core writes results to a single `processorN`, this works for saving results inside each `overlayN`
-- Unfortunately, the `reconstructPar` tool cannot read results from several `overlayN` files. Therefore, results must be taken out before reconstruction.
-- Last point may seem like a killer, but extraction and reconstruction may be performed in small batches avoiding the appearence of many files at the same time for the Meta Data Server.
+- Unfortunately, the `reconstructPar` tool cannot read results from several `overlayN` files. Therefore, decomposed results must be copied back to the host file system before reconstruction.
+- Last point may seem like a killer, but extraction and reconstruction may be performed in small batches avoiding the appearence of many files at the same time in the host file system.
 ---
-
-## Meaning of icons and colours (just for the context of this tutorial)
-
-> ## Series of steps (commands) to be typed in users terminal (guided by instructor)
->
-{: .discussion}
-
-> ## Series of steps (commands) to be typed in users terminal by themselves (in breakout room)
->
-{: .challenge}
-
-> ## Collapsed blocks, with additional information, important parts of the scripts or pre-executed steps
-> No action required
-{: .solution}
-
-> ## The rest are just blocks ...
->
-{: .callout}
-
-> ## ...                     with general information
->
-{: .prereq}
 
 <p>&nbsp;</p>
 
-## 0.Introduction
+## I. Introduction
 
-> ## The large amount of files problem
-> - The production of a large amount of result files has been a major problem for Supercomputing centres due to the overloading of their file management systems
-> - The problem is major because it affects performace for the whole system (affecting all the user base)
+> ## The problem with a large amount of files
+> - The creation of a large amount of result files has been a major problem for Supercomputing centres due to the overloading of their file management systems
+> - This major problem affects the performace of the whole system (affecting all the user base)
 > - The collated option is of great benefit for reducing the amount of result files and solving this problematic
 >     - `fileHandler collated` + `ioRanks`
 > - But it is only fully functional for versions greater-than or equal to
@@ -53,20 +31,22 @@ keypoints:
 
 > ## Then why use other versions/flavours ?
 >
-> - Because users have a complicated case defined already for another version/flavour
-> - Because users may have own tools written for another version/flavour 
-> - Because users may be using additional tools (like waves2Foam or CFDEM) that were written for another version/flavour 
-> - Because only that other flavour (mainly **Foam-extend**) may contain the solver/tool the user needs 
-> - And, of course, to update those case settings/tools to work with recent versions/flavours of OpenFOAM would require extensive effort and time investment
+> - We, indeed, encourage users to update their case settings and tools to tha latest vesions of OpenFOAM with functional `collated`+`ioRanks` option
+> - But still users may need to keep using other versions of OpenFOAM:
+>     - Because they have a complicated case defined already for another version/flavour
+>     - Because they may have own tools written for another version/flavour 
+>     - Because they may be using additional tools (like waves2Foam or CFDEM) that were written for another version/flavour 
+>     - Because only that other flavour (mainly **Foam-extend**) may contain the solver/tool the user needs 
+>     - And, of course, to update those case settings/tools towards a recent version of OpenFOAM would require extensive effort and time investment
 >
 {: .callout}
 
 > ## What can Pawsey do to help their user base ?
 >
-> - We need to avoid the overload of our file system in order to keep a performant file system
+> - We need to avoid the overload of our file system in order to keep a performant
 > - Files older than 30 days are purged from `/scratch`
 > - We have already restricted the user's quota to a maximum of 1 Million inodes (files/directories)
-> - Users would need to modify their workflow (solution-analysis-deletion) so that quota is not exceeded
+> - Users need to modify their workflows (solution-analysis-deletion) for not reaching their quota limit
 > - Use of virtual file systems to store files within (**Thanks to Dr. Andrew King for the suggestion!**)
 >
 {: .prereq}
@@ -75,55 +55,76 @@ keypoints:
 >
 > - Extriclty speaking, it is much more complicated than this, but we can simplyfy the concept as:
 >     - a big single file that can be formatted to keep several files in its interior
-> - The shared metadata server will only observe one single big file
+> - The metadata server will only observe this big file which reduces the overload problem dramatically
 > - Here we make use of **OverlayFS** due to its proved correct behaviour when working with Singularity
-> - But there may be some other technologies/formats/options (like **FUSE**)
+> - There may be some other useful virtual file system technologies/formats/options (like **FUSE**)
 {: .callout}
 
 <p>&nbsp;</p>
 
-> ## Main logic in this idea:
+## II. Logic for the use of OverlayFS to store results
+
+> ## a) Start case preparation normally, then rename the standard decomposed directories
+>
 > 1. Proceed with settings and decomposition of your case as normal
+>    <p>&nbsp;</p>
 > 2. Rename the `processor0`, `processor1` ... `processor4` to `bak.processor0`, `bak.processor1` ... `bak.processor4`
->      - Do not get confused, the tutorial for OpenFOAM-2.4.x uses 5 subdomains (0,1,...,4)
-> 3. Create a writable OverlayFS file: `overlay0`
+>      - Now the initial conditions and decomposed mesh are in the `bak.processorN` subdirectories
+>      - You can access to the information directly from those directories
+>      - If you need an OpenFOAM tool to access that information, you'll need to make use of soft links to "trick" OpenFOAM. But, in principle, soft links pointing to the `bak.processorN` directories would not be needed during execution. They will only be needed for the reconstruction (see reconstruction steps in the following section).
+>      - (Do not get confused, for this exercise, the tutorial for OpenFOAM-2.4.x uses 5 subdomains: 0,1,...,4)
+>    <p>&nbsp;</p>
+>
+{: .prereq}
+
+> ## b) Create several OverlayFS files and prepare them to store the results
+> 1. Create a writable OverlayFS file: `overlay0`
 >      - To create this writable OverlayFS file you will need an "ubuntu-based" container version **18.04 or higher**
-> 4. Copy that file to create the needed replicas of OverlayFS: `overlay1`, `overlay2` ... `overlay4`
 >    <p>&nbsp;</p>
-> 5. For each `ovelayN` create a corresponding `processorN` directory:
->      - `/overlayOpenFOAM/run/channel395/processor0` in `overlay0`
+> 2. In the local host, copy that file to create the needed replicas of OverlayFS: `overlay1`, `overlay2` ... `overlay4`
+>    <p>&nbsp;</p>
+> 3. For each `ovelayN` create a corresponding `processorN` directory inside (using an ubuntu-based container):
+>      - `insideDir=/overlayOpenFOAM/run/channel395`
+>      - `mkdir -p $insideDir/processor0` in `overlay0`
 >      - ...
->      - `/overlayOpenFOAM/run/channel395/processor4` in `overlay4`
+>      - `mkdir -p $insideDir/processor4` in `overlay4`
 >    <p>&nbsp;</p>
-> 6. For each `overlayN` copy the initial conditions and `constant` directory of `bak.processorN` into the `processorN` directories inside the `overlayN` file 
->      - To make the copy you will need to use an "ubuntu-based" container to see the interior of the overlay files
->    <p>&nbsp;</p>
-> 7. In the case directory, create soft-links named `processorN` that point to the internal directories:
->      - `ln -s processor0 /overlayOpenFOAM/run/channel395/processor0` 
+> 4. For each `overlayN` copy the initial conditions and the mesh information from directory `bak.processorN` into the `processorN` directories inside the `overlayN` file (using an ubuntu-based container): 
+>      - `cp -r bak.processor0/* $insideDir/processor0`
 >      - ...
->      - `ln -s processor4 /overlayOpenFOAM/run/channel395/processor4` 
+>      - `cp -r bak.processor4/* $insideDir/processors4`
+>    <p>&nbsp;</p>
+>
+{: .callout}
+
+> ## c) Use soft links to trick the OpenFOAM tools to write towards the interior of the OverlayFS
+> 1. In the case directory, create soft-links named `processorN` that point to the internal directories:
+>      - `ln -s $insideDir/processor0 processor0` 
+>      - ...
+>      - `ln -s $insideDir/processor4 processor4`
+>    <p>&nbsp;</p>
 >      - **The links will appear broken to the host system, but functional to the containers that load the OverlayFS files**
 >    <p>&nbsp;</p>
-> 8. Execute the solver in hybrid-mode, allowing for each task MPI task (identified with `SLURM_PROCID` to mount the `overlay${SLURM_PROCID}`
->      - Each MPI task spawned by `srun` will have an id: `SLURM_PROCID` and values go 0,1,...,4
->      - Then, if SLURM_PROCID=0, then the mounted overlay is `overlay0`, etc.
->      - Task 0 will then read/write to `processor0` which is a link that points to `/overlayOpenFOAM/run/channel395/processor0` 
->      - The same for the other tasks
+>
+{: .prereq}
+
+> ## d) Execute the containerised solver in hybrid mode, mounting one OverlayFS file per task
+>
+> 1. Execute the solver in hybrid-mode, allowing MPI task `N` to mount its corresponding `overlayN` file
+>      - Each MPI task spawned by `srun` will have an id: `SLURM_PROCID` with values 0,1,...,4
+>      - For example, if `SLURM_PROCID=0`, then the mounted OverlayFS file would be `overlay0`
+>      - This allows that:
+>          - As `SLURM_PROCID=0`, then OpenFOAM will read/write to `processor0` (which is a link that points to `$insideDir/processor0` in `overlay0`) 
+>          - The same for the other MPI tasks
+>      - Results will exist inside the OverlayFS files
 >    <p>&nbsp;</p>
 >
-{: .keypoints}
-
-> ## No, unfortunately a container cannot mount more than 1 OverlayFS file at the same time
-> - Yes, this implies that the results need to be copied back to the host file system before reconstruction
-> - This is the inverse operation to point 6. (above)
-> - But in order to avoid the presence of many files in the host, this should be done by small batches:
->    1. Copy small batch of results from the interior to the `bak.processorN` directories
->    2. Now create `processorN` soft links to point to `bak.processorN` directories 
->    3. Reconstruct that small batch
->    4. Remove the reconstructed times from the `bak.processorN` directories
 >
-{: .testimonial}
+{: .callout}
+
 <p>&nbsp;</p>
+
+## III. General instructions for the workshop
 
 > ## 0.I Accessing the scripts for this episode
 >
@@ -385,6 +386,12 @@ keypoints:
 
 ## C. Setup the overlayFS
 > ## The `C.setupOverlayFoam.sh` script (main points to be discussed):
+>
+> ~~~
+> #SBATCH --ntasks=4 #Several tasks will be used for copying files. (Independent from the numberOfSubdomains)
+> ~~~
+> {: .bash}
+>
 > ~~~
 > #1. Loading the container settings, case settings and auxiliary functions (order is important)
 > source $SLURM_SUBMIT_DIR/imageSettingsSingularity.sh
@@ -606,6 +613,8 @@ keypoints:
 > - This is the way we allow each MPI task to pick a different overlay file through the `SLURM_PROCID` variable
 > - Here, `theImage` is not a global environment variable, so we use the shift to a `"..."` section to evaluate the variable in the host shell
 > 
+> <p>&nbsp;</p>
+>
 > ~~~
 > #9. List the existing times inside the overlays 
 > echo "Listing the available times inside overlay0"
@@ -742,14 +751,28 @@ keypoints:
 <p>&nbsp;</p>
 
 ## E. Reconstruction
+
+> ## No, unfortunately a container cannot mount more than 1 OverlayFS file at the same time
+> - Yes, this implies that the results need to be copied back to the host file system before reconstruction
+> - This is the inverse operation to the process of copying the initial decomposition into the OverlayFS files (explained at the beginning of this episode)
+> - But in order to avoid the presence of many files in the host, this should be done by small batches:
+>    1. Copy small batch of results from the interior to the `bak.processorN` directories
+>    2. Now create `processorN` soft links to point to `bak.processorN` directories and not to the OverlayFS interior
+>    3. Reconstruct that small batch
+>    4. Remove the reconstructed times from the `bak.processorN` directories
+>
+{: .prereq}
+
+<p>&nbsp;</p>
+
 > ## The `E.reconstructFromOverlay.sh` script (main points to be discussed):
 > ~~~
-> #SBATCH --ntasks=4 #Independent from the number of subdomains
+> #SBATCH --ntasks=4 #Several tasks will be used for copying files. (Independent from the numberOfSubdomains)
 > ~~~
 > {: .bash}
 >
 > ~~~
-> #4. Transfer the content of the overlayFS into the bak.processor* directories using the softlinks processor*
+> #4. Transfer the content of the overlayFS into the bak.processor* directories
 > reconstructionTime=10
 > echo "Copying the times to reconstruct from the overlays into bak.processor*"
 > for ii in $(seq 0 $(( foam_numberOfSubdomains - 1 ))); do
@@ -827,9 +850,11 @@ keypoints:
 > ## X. A more elaborated control of the reconstruction
 > 
 > - We have already prepared scripts for another episode:
->     - `06_advancedUseOfOverlayFS` with a more advanced bash scripting for controling reconstruction
-> - The notes for that episode are not ready yet, but we encourage users to read the scripts and execute them
-> - (Take into account that these scripts make use of bash functions defined in the `auxiliaryScripts/ofContainersOverlayFunctions.sh` file
+>     - `06_advancedScriptsForPostProcessingWithOverlayFS` with a more advanced scripting for controling reconstruction in batches of N result times
+> - Notes for that episode are not provided, but the logic is very similary to the one presented here
+> - We encourage users to execute the scripts and to study them
+> - (Take into account that these scripts make use of bash functions defined in the `auxiliaryScripts/ofContainersOverlayFunctions.sh` file)
+> - The script for postprocessing in batches is: `E.reconstructFromOverlay.sh` 
 > 
 {: .solution}
 
