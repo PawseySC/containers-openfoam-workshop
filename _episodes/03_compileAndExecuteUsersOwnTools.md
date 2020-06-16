@@ -105,6 +105,8 @@ keypoints:
 > srun -n 1 -N 1 singularity exec $theImage bash -c 'cp -r $WM_PROJECT_DIR/'"$appDirInside/$solverOrg $projectUserDir/applications/$solverNew"
 > ~~~
 > {: .bash}
+> - The `WM_PROJECT_DIR` variable only exist inside the container, that is why it is being evaluated using the `bash -c` command and the sigle quotes
+> - (See the explanation of the `bash -c` command at the end of this section if needed)
 >
 {: .callout}
 
@@ -133,6 +135,7 @@ keypoints:
 > fi
 > ~~~
 > {: .bash}
+> - (See the explanation of the `bash -c` command at the end of this section if needed)
 > 
 > ~~~
 > #5. Going into the new solver directory
@@ -311,6 +314,8 @@ keypoints:
 >    zeus-1:myPimpleFoam> singularity exec $theImage bash -c 'awk "BEGIN{for(v in ENVIRON) print v}" | egrep "FOAM_|WM_" | sort'
 >    ~~~
 >    {: .bash}
+>    - For anything related to OpenFOAM environmental variables, we recommend the use of the `bash -c` command
+>    - (See the explanation of the `bash -c` command at the end of this section if needed)
 >   
 >    ~~~
 >    FOAM_API
@@ -372,6 +377,107 @@ keypoints:
 >    - **Internal directories of the container are non-writable**
 >    - **But we'll bind a local directory (with `-B` option) to the path of `WM_PROJECT_USER_DIR` to make things work**
 {: .discussion}
+
+<p>&nbsp;</p>
+
+> ## The `bash -c` command and the single quotes 
+> 
+> The `bash` command creates a new bash kernel for execution. Together with the `-c` option, we can define a command to be executed inside that new bash kernel. The use of `bash -c` is very important and useful for the execution of OpenFOAM containers. You will notice that and lear its usage along the several episodes of this workshop.
+> 
+> For now, we can try to `echo` the content of the `FOAM_TUTORIALS` variable from the command line (non-interactively). First we exemplify some failed attempts and then the use of `bash -c`.
+> 
+> A first (ineffective) try could be:
+> 
+> ~~~
+> zeus-1:*-v1912> theImage="/group/singularity/pawseyRepository/OpenFOAM/openfoam-v1912-pawsey.sif"
+> zeus-1:*-v1912> singularity exec $theImage echo $FOAM_TUTORIALS
+> ~~~
+> {: .bash}
+> 
+> ~~~
+>
+> ~~~
+> {: .output}
+> - `echo` is ran within the container.
+> - But the command did not work because `$FOAM_TUTORIALS` is being evaluated in the host kernel before passing the arguments to the containerxi
+> - And, in the host kernel, that variable does not exist:
+> 
+> ~~~
+> zeus-1:*-v1912> echo $FOAM_TUTORIALS
+> ~~~
+> {: .bash}
+> 
+> ~~~
+>
+> ~~~
+> {: .output}
+>
+> <p>&nbsp;</p>
+>
+> A second (ineffective) try could be:
+> 
+> ~~~ 
+> zeus-1:*-v1912> singularity exec $theImage echo '$FOAM_TUTORIALS'
+> ~~~
+> {: .bash}
+>
+> ~~~
+> $FOAM_TUTORIALS
+> ~~~
+> {: .output}
+> - Did not work because `echo` now understands to display the exact string but not the content of the variable.
+> 
+> <p>&nbsp;</p>
+>
+> A third (ineffective) try could be the use of `bash -c` with double quotes:
+> 
+> ~~~
+> zeus-1:*-v1912> singularity exec $theImage bash -c "echo $FOAM_TUTORIALS"
+> ~~~
+> {: .bash}
+>
+> ~~~
+>
+> ~~~
+> {: .output}
+> - Almost there, but it did not work because due to the double-apostrophes.
+> - Yes, the `echo` command is being evaluated inside the new bash kernel created by the `bash -c` command (inside the container)
+> - But the double apostrophes allow the evaluation of the variables inside the quote in the host kernel at the command line.
+> - Then, `$FOAM_TUTORIALS` is being evaluated again in the host kernel (where it has no value) before passing the arguments to the container.
+> 
+> <p>&nbsp;</p>
+>
+> Finally, this one works (correct use of `bash -c` and single quotes):
+> 
+> ~~~
+> zeus-1:*-v1912> singularity exec $theImage bash -c 'echo $FOAM_TUTORIALS'
+> ~~~
+> {: .bash}
+>
+> ~~~
+> /opt/OpenFOAM/OpenFOAM-v1912/tutorials
+> ~~~
+> {: .output}
+> - Yes, the `echo` command is being evaluated inside the new bash kernel created by the `bash -c` command (inside the container)
+> - The exact string `'echo $FOAM_TUTORIALS'` is passed as an argument without being evaluated by the host kernel.
+> - The argument is then received correctly by the new bash kernel inside the container
+> - As the variable exists inside the container, then the value can be displayed.
+> 
+> <p>&nbsp;</p>
+>
+> Note that without `bash -c` things do not work either:
+> 
+> ~~~
+> zeus-1:*-v1912> singularity exec $theImage 'echo $FOAM_TUTORIALS'
+> ~~~
+> {: .bash}
+>
+> ~~~
+> /.singularity.d/actions/exec: line 21: exec: echo $FOAM_TUTORIALS: not found
+> ~~~
+> {: .output}
+>
+{: .solution}
 
 <p>&nbsp;</p>
 
