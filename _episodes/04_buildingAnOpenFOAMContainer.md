@@ -368,7 +368,7 @@ You'll need to clone the git repository into your linux environment:
 > 4. Now lets use the first Dockerfile to build a first Docker container (not the final main installation)
 >
 >    > ~~~
->    > ubuntu@vm:01_Docker$ docker build -f Dockerfile.01 -t myuser/openfoam:2.4.x.01 .
+>    > ubuntu@vm:01_Docker$ sudo docker build -f Dockerfile.01 -t myuser/openfoam:2.4.x.01 .
 >    > ~~~
 >    > {: .bash}
 >    > - With the `-f` option you can choose a specific Dockerfile
@@ -525,7 +525,7 @@ In this second exercise, the building process will advance a bit further, but wi
 >
 > 1. Build the docker container using `Dockerfile.02` 
 >    > ~~~
->    > ubuntu@vm:01_Docker$ docker build -f Dockerfile.02 -t myuser/openfoam:2.4.x.02 .
+>    > ubuntu@vm:01_Docker$ sudo docker build -f Dockerfile.02 -t myuser/openfoam:2.4.x.02 .
 >    > ~~~
 >    > {: .bash}
 >    > 
@@ -730,7 +730,7 @@ In this second exercise, the building process will advance a bit further, but wi
 > 1. The final building step (after reaching the right recipe) is:
 >
 >    ~~~
->    ubuntu@vm:01_Docker$ docker build -t myuser/openfoam:2.4.x .
+>    ubuntu@vm:01_Docker$ sudo docker build -t myuser/openfoam:2.4.x .
 >    ~~~
 >    {: .bash}
 >    - **(This will not work in the current state of the exercise)**, but still its good to have the instruction here
