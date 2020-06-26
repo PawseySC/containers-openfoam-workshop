@@ -80,75 +80,78 @@ keypoints:
 
 <p>&nbsp;</p>
 
-## A. Extraction of the tutorial: channel395 **- [Pre-Executed]**
+## A. Extraction of the tutorial: channel395
    
-> ## Main command in the `A.extractTutorial.sh` script:
+> ## The `A.extractTutorial.sh` script 
+> > ## Main command in the script:
+> >
+> > ~~~
+> > tutorialCase=incompressible/pimpleFoam/LES/channel395
+> > caseDir=$SLURM_SUBMIT_DIR/run/channel395
+> > srun -n 1 -N 1 singularity exec $theImage cp -r /opt/OpenFOAM/OpenFOAM-$theVersion/tutorials/$tutorialCase $caseDir
+> > ~~~
+> > {: .language-bash}
+> > 
+> {: .callout}
+> 
+> > ## Other important parts of the script:
+> >
+> > ~~~
+> > #!/bin/bash -l
+> > #SBATCH --export=NONE
+> > #SBATCH --time=00:05:00
+> > #SBATCH --ntasks=1
+> > #SBATCH --partition=copyq #Ideally, you should be using the copyq for this kind of processes
+> > ~~~
+> > {: .language-bash}
+> > 
+> > ~~~
+> > #1. Load the necessary modules
+> > module load singularity
+> > ~~~
+> > {: .language-bash}
+> > 
+> > ~~~
+> > #2. Defining the container to be used
+> > theRepo=/group/singularity/pawseyRepository/OpenFOAM
+> > theContainerBaseName=openfoam
+> > theVersion=v1912
+> > theProvider=pawsey
+> > theImage=$theRepo/$theContainerBaseName-$theVersion-$theProvider.sif
+> > ~~~
+> > {: .language-bash}
+> > 
+> > ~~~
+> > #3. Defining the tutorial and the case directory
+> > tutorialAppDir=incompressible/pimpleFoam/LES
+> > tutorialName=channel395
+> > tutorialCase=$tutorialAppDir/$tutorialName
+> > 
+> > baseWorkingDir=$SLURM_SUBMIT_DIR/run
+> > if ! [ -d $baseWorkingDir ]; then
+> >     echo "Creating baseWorkingDir=$baseWorkingDir"
+> > mkdir -p $baseWorkingDir
+> > fi
+> > caseName=$tutorialName
+> > caseDir=$baseWorkingDir/$caseName
+> > ~~~
+> > {: .language-bash}
+> > 
+> > ~~~
+> > #4. Copy the tutorialCase to the workingDir
+> > if ! [ -d $caseDir ]; then
+> >    srun -n 1 -N 1 singularity exec $theImage cp -r /opt/OpenFOAM/OpenFOAM-$theVersion/tutorials/$tutorialCase $caseDir
+> > else
+> >    echo "The case=$caseDir already exists, no new copy has been performed"
+> > fi
+> > ~~~
+> > {: .language-bash}
+> > 
+> {: .solution}
 >
-> ~~~
-> tutorialCase=incompressible/pimpleFoam/LES/channel395
-> caseDir=$SLURM_SUBMIT_DIR/run/channel395
-> srun -n 1 -N 1 singularity exec $theImage cp -r /opt/OpenFOAM/OpenFOAM-$theVersion/tutorials/$tutorialCase $caseDir
-> ~~~
-> {: .bash}
-> 
-{: .callout}
-
-> ## Other important parts of the script:
->
-> ~~~
-> #!/bin/bash -l
-> #SBATCH --export=NONE
-> #SBATCH --time=00:05:00
-> #SBATCH --ntasks=1
-> #SBATCH --partition=copyq #Ideally, you should be using the copyq for this kind of processes
-> ~~~
-> {: .bash}
-> 
-> ~~~
-> #1. Load the necessary modules
-> module load singularity
-> ~~~
-> {: .bash}
-> 
-> ~~~
-> #2. Defining the container to be used
-> theRepo=/group/singularity/pawseyRepository/OpenFOAM
-> theContainerBaseName=openfoam
-> theVersion=v1912
-> theProvider=pawsey
-> theImage=$theRepo/$theContainerBaseName-$theVersion-$theProvider.sif
-> ~~~
-> {: .bash}
-> 
-> ~~~
-> #3. Defining the tutorial and the case directory
-> tutorialAppDir=incompressible/pimpleFoam/LES
-> tutorialName=channel395
-> tutorialCase=$tutorialAppDir/$tutorialName
-> 
-> baseWorkingDir=$SLURM_SUBMIT_DIR/run
-> if ! [ -d $baseWorkingDir ]; then
->     echo "Creating baseWorkingDir=$baseWorkingDir"
-> mkdir -p $baseWorkingDir
-> fi
-> caseName=$tutorialName
-> caseDir=$baseWorkingDir/$caseName
-> ~~~
-> {: .bash}
-> 
-> ~~~
-> #4. Copy the tutorialCase to the workingDir
-> if ! [ -d $caseDir ]; then
->    srun -n 1 -N 1 singularity exec $theImage cp -r /opt/OpenFOAM/OpenFOAM-$theVersion/tutorials/$tutorialCase $caseDir
-> else
->    echo "The case=$caseDir already exists, no new copy has been performed"
-> fi
-> ~~~
-> {: .bash}
-> 
 {: .solution}
 
-> ## A.I Steps for dealing with the extraction of the "channel395" case:
+> ## A.I Steps for dealing with the extraction of the "channel395" case: **- [Pre-Executed]**
 > 1. Submit the job (no need for reservation as the script uses the `copyq` partition)
 > 
 >    ~~~
@@ -189,38 +192,41 @@ keypoints:
 
 ## B. Adapt the case to your needs (and Pawsey best practices)
 
-> ## Main command in the `B.adaptCase.sh` script
->
-> ~~~
-> foam_runTimeModifiable="false"
-> sed -i 's,^runTimeModifiable.*,runTimeModifiable    '"$foam_runTimeModifiable"';,' ./system/controlDict
-> ~~~
-> {: .bash}
+> ## The `B.adaptCase.sh` script
+> > ## Main command in the script
+> >
+> > ~~~
+> > foam_runTimeModifiable="false"
+> > sed -i 's,^runTimeModifiable.*,runTimeModifiable    '"$foam_runTimeModifiable"';,' ./system/controlDict
+> > ~~~
+> > {: .language-bash}
+> > 
+> {: .callout}
 > 
-{: .callout}
-
-> ## Other important parts of the script:
+> > ## Other important parts of the script:
+> >
+> > ~~~
+> > #5. Defining OpenFOAM controlDict settings for Pawsey Best Practices
+> > ##5.1 Replacing writeFormat, runTimeModifiable and purgeRight settings
+> > foam_writeFormat="binary"
+> > sed -i 's,^writeFormat.*,writeFormat    '"$foam_writeFormat"';,' ./system/controlDict
+> > foam_runTimeModifiable="false"
+> > sed -i 's,^runTimeModifiable.*,runTimeModifiable    '"$foam_runTimeModifiable"';,' ./system/controlDict
+> > foam_purgeWrite=10
+> > sed -i 's,^purgeWrite.*,purgeWrite    '"$foam_purgeWrite"';,' ./system/controlDict
+> > ~~~
+> > {: .language-bash}
+> > 
+> > ~~~
+> > ##5.2 Defining the use of collated fileHandler of output results 
+> > echo "OptimisationSwitches" >> ./system/controlDict
+> > echo "{" >> ./system/controlDict
+> > echo "   fileHandler collated;" >> ./system/controlDict
+> > echo "}" >> ./system/controlDict
+> > ~~~
+> > {: .language-bash}
+> {: .solution}
 >
-> ~~~
-> #5. Defining OpenFOAM controlDict settings for Pawsey Best Practices
-> ##5.1 Replacing writeFormat, runTimeModifiable and purgeRight settings
-> foam_writeFormat="binary"
-> sed -i 's,^writeFormat.*,writeFormat    '"$foam_writeFormat"';,' ./system/controlDict
-> foam_runTimeModifiable="false"
-> sed -i 's,^runTimeModifiable.*,runTimeModifiable    '"$foam_runTimeModifiable"';,' ./system/controlDict
-> foam_purgeWrite=10
-> sed -i 's,^purgeWrite.*,purgeWrite    '"$foam_purgeWrite"';,' ./system/controlDict
-> ~~~
-> {: .bash}
-> 
-> ~~~
-> ##5.2 Defining the use of collated fileHandler of output results 
-> echo "OptimisationSwitches" >> ./system/controlDict
-> echo "{" >> ./system/controlDict
-> echo "   fileHandler collated;" >> ./system/controlDict
-> echo "}" >> ./system/controlDict
-> ~~~
-> {: .bash}
 {: .solution}
 
 > ## B.I Initial steps for dealing with the adaptation of the case **- [Pre-Executed]**
@@ -302,83 +308,86 @@ keypoints:
 
 ## C. Decomposition
 
-> ## Main command in the `C.decomposeFoam.sh` script:
-> ~~~
-> srun -n 1 -N 1 singularity exec $theImage decomposePar -cellDist -force
-> ~~~
-> {: .bash}
->
-{: .callout}
-
-> ## Other important parts of the script:
->
-> ~~~
-> #!/bin/bash -l
-> #SBATCH --ntasks=1
-> #SBATCH --mem=4G
-> #SBATCH --ntasks-per-node=28
-> #SBATCH --clusters=zeus
-> #SBATCH --partition=workq
-> #SBATCH --time=0:10:00
-> #SBATCH --export=none
-> ~~~
-> {: .bash}
->
-> ~~~
-> #1. Load the necessary modules
-> module load singularity
-> ~~~
-> {: .bash}
->
-> ~~~
-> #2. Defining the container to be used
-> theRepo=/group/singularity/pawseyRepository/OpenFOAM
-> theContainerBaseName=openfoam
-> theVersion=v1912
-> theProvider=pawsey
-> theImage=$theRepo/$theContainerBaseName-$theVersion-$theProvider.sif
-> ~~~
-> {: .bash}
->
-> ~~~
-> #3. Defining the case directory
-> baseWorkingDir=$SLURM_SUBMIT_DIR/run
-> caseName=channel395
-> caseDir=$baseWorkingDir/$caseName
-> ~~~
-> {: .bash}
+> ## The `C.decomposeFoam.sh` script
+> > ## Main command in the script:
+> > ~~~
+> > srun -n 1 -N 1 singularity exec $theImage decomposePar -cellDist -force
+> > ~~~
+> > {: .language-bash}
+> >
+> {: .callout}
 > 
-> ~~~
-> #4. Going into the case and creating the logs directory
-> if [ -d $caseDir ]; then
->    cd $caseDir
->    echo "pwd=$(pwd)"
-> else
->    echo "For some reason, the case=$caseDir, does not exist"
->    echo "Exiting"; exit 1
-> fi
-> logsDir=./logs/pre
-> if ! [ -d $logsDir ]; then
->    mkdir -p $logsDir
-> fi
-> ~~~
-> {: .bash}
-> 
-> ~~~
-> #6. Defining the ioRanks for collating I/O
-> # groups of 2 for this exercise (please read our documentation for the recommendations for production runs)
-> export FOAM_IORANKS='(0 2 4 6)'
-> ~~~
-> {: .bash}
-> 
-> ~~~
-> #7. Perform all preprocessing OpenFOAM steps up to decomposition
-> echo "Executing blockMesh"
-> srun -n 1 -N 1 singularity exec $theImage blockMesh 2>&1 | tee $logsDir/log.blockMesh.$SLURM_JOBID
-> echo "Executing decomposePar"
-> srun -n 1 -N 1 singularity exec $theImage decomposePar -cellDist -force 2>&1 | tee $logsDir/log.decomposePar.$SLURM_JOBID
-> ~~~
-> {: .bash}
+> > ## Other important parts of the script:
+> >
+> > ~~~
+> > #!/bin/bash -l
+> > #SBATCH --ntasks=1
+> > #SBATCH --mem=4G
+> > #SBATCH --ntasks-per-node=28
+> > #SBATCH --clusters=zeus
+> > #SBATCH --partition=workq
+> > #SBATCH --time=0:10:00
+> > #SBATCH --export=none
+> > ~~~
+> > {: .language-bash}
+> >
+> > ~~~
+> > #1. Load the necessary modules
+> > module load singularity
+> > ~~~
+> > {: .language-bash}
+> >
+> > ~~~
+> > #2. Defining the container to be used
+> > theRepo=/group/singularity/pawseyRepository/OpenFOAM
+> > theContainerBaseName=openfoam
+> > theVersion=v1912
+> > theProvider=pawsey
+> > theImage=$theRepo/$theContainerBaseName-$theVersion-$theProvider.sif
+> > ~~~
+> > {: .language-bash}
+> >
+> > ~~~
+> > #3. Defining the case directory
+> > baseWorkingDir=$SLURM_SUBMIT_DIR/run
+> > caseName=channel395
+> > caseDir=$baseWorkingDir/$caseName
+> > ~~~
+> > {: .language-bash}
+> > 
+> > ~~~
+> > #4. Going into the case and creating the logs directory
+> > if [ -d $caseDir ]; then
+> >    cd $caseDir
+> >    echo "pwd=$(pwd)"
+> > else
+> >    echo "For some reason, the case=$caseDir, does not exist"
+> >    echo "Exiting"; exit 1
+> > fi
+> > logsDir=./logs/pre
+> > if ! [ -d $logsDir ]; then
+> >    mkdir -p $logsDir
+> > fi
+> > ~~~
+> > {: .language-bash}
+> > 
+> > ~~~
+> > #6. Defining the ioRanks for collating I/O
+> > # groups of 2 for this exercise (please read our documentation for the recommendations for production runs)
+> > export FOAM_IORANKS='(0 2 4 6)'
+> > ~~~
+> > {: .language-bash}
+> > 
+> > ~~~
+> > #7. Perform all preprocessing OpenFOAM steps up to decomposition
+> > echo "Executing blockMesh"
+> > srun -n 1 -N 1 singularity exec $theImage blockMesh 2>&1 | tee $logsDir/log.blockMesh.$SLURM_JOBID
+> > echo "Executing decomposePar"
+> > srun -n 1 -N 1 singularity exec $theImage decomposePar -cellDist -force 2>&1 | tee $logsDir/log.decomposePar.$SLURM_JOBID
+> > ~~~
+> > {: .language-bash}
+> {: .solution}
+>
 {: .solution}
 
 > ## C.I Steps for dealing with decomposition:
@@ -386,15 +395,24 @@ keypoints:
 > 1. Submit the decomposition script from the scripts directory (use the reservation for the workshop if available)
 >
 >    ~~~
->    zeus-1:*-v1912> myReservation=XXX
+>    zeus-1:*-v1912> myReservation=containers
 >    ~~~
 >    {: .bash}
-> 
+>
 >    ~~~
 >    zeus-1:*-v1912> sbatch --reservation=$myReservation C.decomposeFoam.sh 
 >    ~~~
 >    {: .bash}
 >    
+>    > ## If you do not have a reservation
+>    > Then, submit normally (or choose the best partition for executing the exercise, the `debugq` for example:)
+>    >    ~~~
+>    >    zeus-1:*-v1912> sbatch -p debugq C.decomposeFoam.sh
+>    >    ~~~
+>    >    {: .bash}
+>    >
+>    {: .solution}
+> 
 >    ~~~
 >    Submitted batch job 4632558
 >    ~~~
@@ -425,79 +443,82 @@ keypoints:
 
 ## D. Executing the solver
 
-> ## Main command in the `D.runFoam.sh` script:
+> ## The `D.runFoam.sh` script 
+> > ## Main command in the script:
+> >
+> > ~~~
+> > srun -n $SLURM_NTASKS -N $SLURM_JOB_NUM_NODES singularity exec $theImage $of_solver -parallel
+> > ~~~
+> > {: .language-bash}
+> >
+> {: .callout}
+> 
+> > ## Other important parts of the script:
+> > ~~~
+> > #SBATCH --ntasks=4
+> > #SBATCH --mem=16G
+> > #SBATCH --ntasks-per-node=28
+> > #SBATCH --cluster=zeus
+> > ~~~
+> > {: .language-bash}
+> > 
+> > ~~~
+> > #5. Reading OpenFOAM decomposeParDict settings
+> > foam_numberOfSubdomains=$(grep "^numberOfSubdomains" ./system/decomposeParDict | tr -dc '0-9')
+> > ~~~
+> > {: .language-bash}
+> > 
+> > ~~~
+> > #7. Checking if the number of tasks coincide with the number of subdomains
+> > if [[ $foam_numberOfSubdomains -ne $SLURM_NTASKS ]]; then
+> >    echo "foam_numberOfSubdomains read from ./system/decomposeParDict is $foam_numberOfSubdomains"
+> >    echo "and"
+> >    echo "SLURM_NTASKS in this job is $SLURM_NTASKS"
+> >    echo "These should be the same"
+> >    echo "Therefore, exiting this job"
+> >    echo "Exiting"; exit 1
+> > fi
+> > ~~~
+> > {: .language-bash}
+> >
+> > ~~~
+> > #8. Defining OpenFOAM controlDict settings for this run
+> > foam_startFrom=startTime
+> > #foam_startFrom=latestTime
+> > foam_startTime=0
+> > #foam_startTime=15
+> > foam_endTime=10
+> > #foam_endTime=30
+> > foam_writeInterval=1
+> > foam_purgeWrite=10
+> > ~~~
+> > {: .language-bash}
+> > 
+> > ~~~
+> > #9. Changing OpenFOAM controlDict settings
+> > sed -i 's,^startFrom.*,startFrom    '"$foam_startFrom"';,' system/controlDict
+> > sed -i 's,^startTime.*,startTime    '"$foam_startTime"';,' system/controlDict
+> > sed -i 's,^endTime.*,endTime    '"$foam_endTime"';,' system/controlDict
+> > sed -i 's,^writeInterval.*,writeInterval    '"$foam_writeInterval"';,' system/controlDict
+> > sed -i 's,^purgeWrite.*,purgeWrite    '"$foam_purgeWrite"';,' system/controlDict
+> > ~~~
+> > {: .language-bash}
+> > 
+> > ~~~
+> > #10. Defining the solver
+> > of_solver=pimpleFoam
+> > ~~~
+> > {: .language-bash}
+> > 
+> > ~~~
+> > #11. Execute the case 
+> > echo "About to execute the case"
+> > srun -n $SLURM_NTASKS -N $SLURM_JOB_NUM_NODES singularity exec $theImage $of_solver -parallel 2>&1 | tee $logsDir/log.$theSolver.$SLURM_JOBID
+> > echo "Execution finished"
+> > ~~~
+> > {: .language-bash}
+> {: .solution}
 >
-> ~~~
-> srun -n $SLURM_NTASKS -N $SLURM_JOB_NUM_NODES singularity exec $theImage $of_solver -parallel
-> ~~~
-> {: .bash}
->
-{: .callout}
-
-> ## Other important parts of the script:
-> ~~~
-> #SBATCH --ntasks=4
-> #SBATCH --mem=16G
-> #SBATCH --ntasks-per-node=28
-> #SBATCH --cluster=zeus
-> ~~~
-> {: .bash}
-> 
-> ~~~
-> #5. Reading OpenFOAM decomposeParDict settings
-> foam_numberOfSubdomains=$(grep "^numberOfSubdomains" ./system/decomposeParDict | tr -dc '0-9')
-> ~~~
-> {: .bash}
-> 
-> ~~~
-> #7. Checking if the number of tasks coincide with the number of subdomains
-> if [[ $foam_numberOfSubdomains -ne $SLURM_NTASKS ]]; then
->    echo "foam_numberOfSubdomains read from ./system/decomposeParDict is $foam_numberOfSubdomains"
->    echo "and"
->    echo "SLURM_NTASKS in this job is $SLURM_NTASKS"
->    echo "These should be the same"
->    echo "Therefore, exiting this job"
->    echo "Exiting"; exit 1
-> fi
-> ~~~
-> {: .bash}
->
-> ~~~
-> #8. Defining OpenFOAM controlDict settings for this run
-> foam_startFrom=startTime
-> #foam_startFrom=latestTime
-> foam_startTime=0
-> #foam_startTime=15
-> foam_endTime=10
-> #foam_endTime=30
-> foam_writeInterval=1
-> foam_purgeWrite=10
-> ~~~
-> {: .bash}
-> 
-> ~~~
-> #9. Changing OpenFOAM controlDict settings
-> sed -i 's,^startFrom.*,startFrom    '"$foam_startFrom"';,' system/controlDict
-> sed -i 's,^startTime.*,startTime    '"$foam_startTime"';,' system/controlDict
-> sed -i 's,^endTime.*,endTime    '"$foam_endTime"';,' system/controlDict
-> sed -i 's,^writeInterval.*,writeInterval    '"$foam_writeInterval"';,' system/controlDict
-> sed -i 's,^purgeWrite.*,purgeWrite    '"$foam_purgeWrite"';,' system/controlDict
-> ~~~
-> {: .bash}
-> 
-> ~~~
-> #10. Defining the solver
-> of_solver=pimpleFoam
-> ~~~
-> {: .bash}
-> 
-> ~~~
-> #11. Execute the case 
-> echo "About to execute the case"
-> srun -n $SLURM_NTASKS -N $SLURM_JOB_NUM_NODES singularity exec $theImage $of_solver -parallel 2>&1 | tee $logsDir/log.$theSolver.$SLURM_JOBID
-> echo "Execution finished"
-> ~~~
-> {: .bash}
 {: .solution}
 
 > ## D.I Steps for dealing with the solver
@@ -581,30 +602,33 @@ keypoints:
 
 ## E. Reconstruction
 
-> ## Main command in the `E.reconstructFoam.sh` script:
->
-> ~~~
-> srun -n 1 -N 1 singularity exec $theImage reconstructPar -latestTime
-> ~~~
-> {: .bash}
->
-{: .callout}
-
-> ## Other important parts of the script:
-> ~~~
-> #SBATCH --ntasks=1
-> #SBATCH --mem=16G
-> #SBATCH --ntasks-per-node=28
-> #SBATCH --clusters=zeus
-> ~~~
-> {: .bash}
+> ## The `E.reconstructFoam.sh` script 
+> > ## Main command in the script:
+> >
+> > ~~~
+> > srun -n 1 -N 1 singularity exec $theImage reconstructPar -latestTime
+> > ~~~
+> > {: .language-bash}
+> >
+> {: .callout}
 > 
-> ~~~
-> #7. Execute reconstruction
-> echo "Start reconstruction"
-> srun -n 1 -N 1 singularity exec $theImage reconstructPar -latestTime 2>&1 | tee $logsDir/log.reconstructPar.$SLURM_JOBID
-> ~~~
-> {: .bash}
+> > ## Other important parts of the script:
+> > ~~~
+> > #SBATCH --ntasks=1
+> > #SBATCH --mem=16G
+> > #SBATCH --ntasks-per-node=28
+> > #SBATCH --clusters=zeus
+> > ~~~
+> > {: .language-bash}
+> > 
+> > ~~~
+> > #7. Execute reconstruction
+> > echo "Start reconstruction"
+> > srun -n 1 -N 1 singularity exec $theImage reconstructPar -latestTime 2>&1 | tee $logsDir/log.reconstructPar.$SLURM_JOBID
+> > ~~~
+> > {: .language-bash}
+> {: .solution}
+>
 {: .solution}
 
 > ## E.1 Steps for dealing with reconstruction:

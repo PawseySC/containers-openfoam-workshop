@@ -9,11 +9,11 @@ objectives:
 keypoints:
 - Take it easy, be patient
 - Use existing definition files examples and available guides to define the right installation recipe
-- Main difference in the standard OpenFOAM installation settings are:
-    - Avoiding the installation of OpenMPI
-    - Settings in `prefs.sh` for using `WM_MPLIB=SYSTEMMPI` (MPICH in this case) 
-    - Settings in `bashrc` for defining the new location for installation
-    - Settings in `bashrc` for defining `WM_PROJECT_USER_DIR`
+- Main difference with a standard OpenFOAM installation guide are':'
+- 1.Avoiding any step that performs an installation of OpenMPI
+- 2.Settings in `prefs.sh` for using `WM_MPLIB=SYSTEMMPI` (MPICH in this case) 
+- 3.Settings in `bashrc` for defining the new location for installation
+- 4.Settings in `bashrc` for defining `WM_PROJECT_USER_DIR`
 ---
 
 
@@ -50,11 +50,9 @@ keypoints:
 ## A. Have ready a Linux environment 
 - If you count with a linux environment with Docker, Singularity and Git installed in your local computer, then you are ready to go to section B.
 
-- If not, you can use the Nimbus Virtual Machines provided for the training:
+- If not, for the workshops we provide a Nimbus Virtual Machines attendees:
 
-> ## Steps for connecting to a Nimbus Virtual Machine:
->
-> If you do not count with such a system, you can use one of the virtual machines provided for the training.
+> ## A.I Steps for connecting to a Nimbus Virtual Machine for a live workshop:
 >
 > Follow these steps to connect to your Nimbus virtual machine:
 >
@@ -151,7 +149,7 @@ keypoints:
 >    ~~~
 >    {: .output}
 >
-{: .discussion}
+{: .solution}
 
 <p>&nbsp;</p>
 
@@ -159,7 +157,7 @@ keypoints:
 
 You'll need to clone the git repository into your linux environment:
 
-> ## Steps for cloning the Git repository
+> ## B.I Steps for cloning the Git repository
 >
 > 1. Create a directory for the training and clone the repository
 > 
@@ -196,15 +194,18 @@ You'll need to clone the git repository into your linux environment:
 
 ## C. Building a first Docker image with MPICH
 
-- As mentioned in the previous days, builiding containers of large applications will need some trial-and-error process
+> ## General advice:
+> - As mentioned in the previous seminars, builiding containers of large applications will need some trial-and-error process
+> 
+> - The building of an OpenFOAM image needs trial-and-error. (Installations of OpenFOAM are sometimes very time consuming)
+> 
+> - Therefore, we recommended to build the image first with Docker and convert it to Singularity afterwards
+> 
+> - This also allows more portability
+>
+{: .callout}
 
-- The building of an OpenFOAM image needs trial-and-error. (Installations of OpenFOAM are sometimes very time consuming)
-
-- Therefore, we recommended to build the image first with Docker and convert it to Singularity afterwards
-
-- This also allows more portability
-
-> ## Steps for building our first image based on `pawsey/mpich-base`
+> ## C.I Steps for building our first image based on `pawsey/mpich-base`
 > 1. cd into the exercise directory:
 >    ~~~
 >    ubuntu@vm:pawseyTraining$ cd containers-openfoam-workshop-scripts/04_buildingAnOpenFOAMContainer/openfoam-2.4.x 
@@ -374,6 +375,7 @@ You'll need to clone the git repository into your linux environment:
 >    > - With the `-f` option you can choose a specific Dockerfile
 >    > - **Important:** Do not forget the dot `.` (which means: current directory) at the end
 >    > - Note the tag used: `2.4.x.01` as we know this is a first test and not the final image
+>    > - **Important:** The `myuser` name is important. This should be modified to correspond to your **Dockerhub** account. And will be used when the final version of the image is ready to be pushed it into DockerHub
 >    >
 >    > <p>&nbsp;</p>
 >    >
@@ -428,6 +430,8 @@ You'll need to clone the git repository into your linux environment:
 >    > pawsey/mpich-base   3.1.4_ubuntu16.04   b2cb97823381        3 weeks ago         548MB
 >    > ~~~
 >    > {: .output}
+>    - Our image is now first in the list
+>    - (For those using the virtual machines provided by Pawsey to the atendees, note that some pawsey images were already pulled before hand)
 >    
 {: .discussion}
 
@@ -438,11 +442,11 @@ You'll need to clone the git repository into your linux environment:
 > ## Non-default settings in the installation are:
 > - For the OpenFOAM installation to understand the use of the system-MPI (MPICH in this case), we need to modify the default settings
 > 
-> - We also need to modify the indication for the path of installation
+> - We also recommend to modify the path for the OpenFOAM installation
 > 
-> - And the indication for the path where user's solvers and development will be stored
+> - We also recommend the path where the user's own solvers and libraries will be stored (`WM_PROJECT_USER_DIR`)
 > 
-> - All those setting need to be indicated in the files `bashrc` and `prefs.sh`
+> - These three modifications are set in the files `bashrc` and `prefs.sh`
 > 
 {: .callout}
 
@@ -479,6 +483,7 @@ You'll need to clone the git repository into your linux environment:
 >  && echo ''
 > ~~~
 > {: .docker}
+> - These are the settings for the use of the system installed MPICH
 > - Using echo command to write the settings into the `prefs.sh` file
 >
 > <p>&nbsp;</p>
@@ -496,7 +501,11 @@ You'll need to clone the git repository into your linux environment:
 >  && echo ''
 > ~~~
 > {: .docker}
+> - These are the settings for the installation path and the `WM_PROJECT_USER_DIR` path
 > - Using `sed` command to replace settings in the `bashrc` file
+> - The syntax shown here adds the new setting immediately below the original setting
+> - Then comments out the line of the original setting
+> - Note also that the original file is first copied into `bashrc.original`
 >
 > <p>&nbsp;</p>
 >
@@ -514,14 +523,14 @@ In this second exercise, the building process will advance a bit further, but wi
 > #...........
 > ~~~
 > {: .docker}
-> - We can use this trick to stop the building process at some point and check the installation up to there
-> - I like to use this trick instead of commenting the rest of the Dockerfile
-> - Building process will end with an error, but previous commands are cached in layers
-> - We can still access any cached layer as an image
+> - We recommend the use of this trick to stop the building process at some point and check the status of the installation up to that point
+> - We like to use this trick instead of commenting the rest of the Dockerfile
+> - Note that the building process will end with an error, but previous commands are cached in layers
+> - We can still access any succesful cached layer before the error and use it as an image
 >
-{: .solution}
+{: .callout}
 
-> ## Steps for the second build:
+> ## D.I Steps for the second build:
 >
 > 1. Build the docker container using `Dockerfile.02` 
 >    > ~~~
@@ -688,16 +697,25 @@ In this second exercise, the building process will advance a bit further, but wi
 
 ## F. Final remarks on the building of OpenFOAM containers at Pawsey with Docker
 
-- Pawsey maintains several images that can be used for running applications or for building new ones
+> ## General recommendations:
+> - Pawsey maintains several images that can be used for running applications or for building new ones
+> 
+> - The official maintained Dockerfile for OpenFOAM-2.4.x is in the PawseySC GitHUB: [https://github.com/PawseySC/pawsey-containers](https://github.com/PawseySC/pawsey-containers)
+> 
+> - The DockerHub repository (where the corresponding Docker images are) is: [https://hub.docker.com/u/pawsey](https://hub.docker.com/u/pawsey)
+> 
+> - Use pawsey Dockerfiles as examples to build your own container 
+> 
+> - Then write your own Dockerfile and modify it following the instructions from the Developers and from the OpenFOAM wiki: [https://openfoamwiki.net/index.php/Category:Installing_OpenFOAM_on_Linux](https://openfoamwiki.net/index.php/Category:Installing_OpenFOAM_on_Linux))
+> 
+> - The process may need some trial and error until you reach the correct recipe (the use of the `StopHere` trick shown in the previous exercise may help to debug the process and save some time)
+> 
+> - After reaching a final correct Dockerfile recipe you can then build your Docker image and convert it to Singularity in a second stage
+>
+{: .prereq}
 
-- The official maintained Dockerfile for OpenFOAM-2.4.x is in the PawseySC GitHUB:
-[https://github.com/PawseySC/pawsey-containers](https://github.com/PawseySC/pawsey-containers)
 
-- Use existing Dockerfiles (and instructions from the Developers and OpenFOAM wiki: [https://openfoamwiki.net/index.php/Category:Installing_OpenFOAM_on_Linux](https://openfoamwiki.net/index.php/Category:Installing_OpenFOAM_on_Linux)) to build your own container 
-
-- The DockerHub repository (where the corresponding Docker images are) is: [https://hub.docker.com/u/pawsey](https://hub.docker.com/u/pawsey)
-
-> ## The `Dockerfile` file (some other sections for discussion)
+> ## Compilation sections in the `Dockerfile` and the `bashrc` file
 >
 > ~~~
 > #Third party compilation
@@ -718,25 +736,34 @@ In this second exercise, the building process will advance a bit further, but wi
 >  && ./Allwmake 2>&1 | tee log.Allwmake
 > ~~~
 > {: .docker}
-> - Always source the `bashrc` file (in this case using the argument `OFBASHRC`) before compilation steps in a layer
+> - In each `RUN` command, source the `bashrc` file (in this case using the argument `OFBASHRC`) before compilation steps in a layer
 > - This is because environment settings are lost after each `RUN` command
-> - The only way to keep the environment variables is to apply a `ENV` command for each of the OpenFOAM variables, which is a very tedious process
-> - When executing the Docker container, the `bashrc` file will need to be sourced too
+> - The only way to keep the environment variables is to apply a `ENV` command for each of the OpenFOAM variables, which is a very tedious process and we do not recommend it
+> - Instead, when executing the Docker container, the `bashrc` file will need to be sourced to set the OpenFOAM environment
+> - Nevertheless, we are recommending to use Singularity to run your OpenFOAM containers, so it is possible that you will not be using the Docker image except for testing
+> - Fortunately, when builiding the Singularity image, there is an easy way to indicate to source the `bashrc` file every time the container is executed
+> - Then, for Singularity containers, there will be no need to manually source the `bashrc` file
 >
 {: .callout}
 
-> ## Final steps in the creation of the full Docker container
+> ## F.I Final steps in the creation of the full Docker container
 >
-> 1. The final building step (after reaching the right recipe) is:
+> 1. The final building step (after reaching the right `Dockerfile` recipe) would be:
 >
 >    ~~~
 >    ubuntu@vm:01_Docker$ sudo docker build -t myuser/openfoam:2.4.x .
 >    ~~~
 >    {: .bash}
->    - **(This will not work in the current state of the exercise)**, but still its good to have the instruction here
->    - Without the `-f` option, then a file named `Dockerfile` will be used by default
->    - The full building process of the `pawsey/openfoam:2.4.x` takes around 6 hours
+>    - Without the `-f` option, then a file named `Dockerfile` will be used by default as the recipe
+>    - **(This command will not work in the current state of the exercise)** because that file has not been created yet
+>    - But still we are presenting the instruction here for completeness
+>    - To really build the full image you would need to create the correct `Dockerfile` (the provided file `*.02` was produced from the official recipe, but it has been modified by commenting some lines (marked with `#commentedForExercise#` string) and the additional line with `RUN StopHere` 
+>    - To create your own correct `Dockerfile` you can remove the comments and the `StopHere` line, or clone the git repository mentioned a few paragraphs above and take the correct recipe from there
+>    - The full building process of the `openfoam:2.4.x` takes around 6 hours
+>
+>    <p>&nbsp;</p>
 >   
+>    - When using the correct `Dockerfile` the output will like like this:
 >    ~~~
 >    Sending build context to Docker daemon  16.38kB^M^M
 >    Step 1/38 : FROM pawsey/mpich-base:3.1.4_ubuntu16.04
@@ -763,17 +790,22 @@ In this second exercise, the building process will advance a bit further, but wi
 >    Successfully tagged myuser/openfoam:2.4.x
 >    ~~~
 >    {: .output}
+>    - The name `myuser` is important and should be modified to match your username in DockerHub
+>    - This because it will indicate the owner when pushing the container image
+>
+>    <p>&nbsp;</p>
 >    
 > 2. Then we test that the internal OpenFOAM installation works properly
 >    - This can easily be checked with an interactive session
->    - **(Here we test with the `pawsey/openfoam:2.4.x` because the `myusers/openfoam:2.4.x` image does not exist yet)**
+>    - **(Here we perform the test with the `pawsey/openfoam:2.4.x` image because the `myuser/openfoam:2.4.x` image does not exist yet):**
 >    
 >    ~~~
 >    ubuntu@vm:01_Docker$ docker run -it --rm pawsey/openfoam:2.4.x
 >    ofuser@49146943821c:~$ source /opt/OpenFOAM/OpenFOAM-2.4.x/etc/bashrc
 >    ~~~
 >    {: .bash}
->    - You need to source the `bashrc` file to activate the OpenFOAM environment
+>    - This will also show the way to run the Docker container in an interactive session
+>    - To set the OpenFOAM environment in our container, the user needs to source manually the `bashrc` file
 >
 >    ~~~
 >    ofuser@49146943821c:~$ cd $FOAM_TUTORIALS
@@ -794,10 +826,10 @@ In this second exercise, the building process will advance a bit further, but wi
 >    ~~~
 >    {: .bash}
 >    - `./Allrun` scripts executes all the workflow for the tutorial
->    - Usually you do not want to execute the tutorials from the original directory (because you can modify your original source)
->    - But in this case it is fine because changes will be lost when exiting the container
->    - If you want to keep the results, you would need to extract the tutorial into a local directory first
->    - And execute the containerised solver from there
+>    - In a common installation of OpenFOAM, usually you do not want to execute the tutorials from the original directory (because you can modify your original source)
+>    - But in this case, it is fine the original image will not be modified and the changes we observe here will be lost when exiting the container
+>    - If you want to keep the results, you would need to extract the tutorial into a local host directory first and execute the containerised solver from there (mounting the local directory in the docker command) (not explained here)
+>    - Or you could also copy out the results (also by mounting the local directory in the docker command, so you have a directory where to copy the results) (not explained here)
 >    - (Refer to the Docker documentation if you want to use the Docker image in your computer or elsewhere)
 >    
 >    ~~~
@@ -806,7 +838,7 @@ In this second exercise, the building process will advance a bit further, but wi
 >    Running pimpleFoam in parallel on /opt/OpenFOAM/OpenFOAM-2.4.x/tutorials/incompressible/pimpleFoam/channel395 using 5 processes 
 >    ~~~
 >    {: .output}
->    - Everything looks fine.
+>    - OpenFOAM execution is working properly.
 >    - This may take several minutes (~15 to ~30 min). Use `<Ctrl-C>` to kill the solver
 >    
 >    ~~~
@@ -814,15 +846,15 @@ In this second exercise, the building process will advance a bit further, but wi
 >    ~~~
 >    {: .bash}
 >
-> 3. Finally, push your container to DockerHub. **(myuser needs an account in DockerHub first)**
+> 3. After testing that the Docker container works properly, the final step is to push your container to DockerHub.
+>    - As mentioned some paragraphs above, **(the `myuser` name in the commands needs to be replaced with your real account in DockerHub)**
+>    - (Refer to Docker documentation and website to obtain your DockerHub account) (not explained here)
 >
 >    - For example:
 >    ~~~
 >    ubuntu@vm:01_Docker$ docker push myuser/openfoam:2.4.x
 >    ~~~
 >    {: .bash}
->    - **(again, the command will not work. You need the image `myuser/openfoam:2.4.x` to exist)**
->
 >    
 >    ~~~
 >    The push refers to repository [docker.io/myuser/openfoam]
@@ -843,14 +875,10 @@ In this second exercise, the building process will advance a bit further, but wi
 >    2.4.x: digest: sha256:717d3e4153c52b517273e2afaadf2e38651c7ecf1d68ce09658fc68e2df806a0 size: 7227
 >    ~~~
 >    {: .output}
->    - Again, this may not work at this stage of the exercise because the full image has not been created
->    - You would also need a DockerHub account to be allowed to push images
 >
 {: .discussion}
 
 ## G. Converting the container into Singularity format
-
-First, lets take a look into the `Singularity.def` definition file:
 
 > ## The `Singularity.def` file:
 >
@@ -864,15 +892,15 @@ First, lets take a look into the `Singularity.def` definition file:
 > echo ". /opt/OpenFOAM/OpenFOAM-2.4.x/etc/bashrc" >> $SINGULARITY_ENVIRONMENT
 > ~~~
 > {: .singularity}
-> - This is the whole file! Very simple!
+> - This is the whole definition file for the conversion to singularity. Very simple!
 > - The singularity image will be built from the Pawsey one: `pawsey/openfoam:2.4.x`
 > - The image in the `From:` command need to exist in the DockerHub registry (repository)
 > - The first two lines in the `%post` section instructs the builder to use `bash` as the shell
 > - This is needed because OpenFOAM scripts have some instructions that can only be interpreted by `bash` (called bash-isms by geeks)
-> - The last line writes the instruction of sourcing the bashrc file every time the container is used
-{: .solution}
->
-> ## Steps for porting the image into Singularity:
+> - The last line writes the instruction of sourcing the bashrc file every time the a container instance is created with this image
+{: .callout}
+
+> ## G.I Steps for porting the image into Singularity:
 > 1. cd into the `02_PortingToSingularity` directory
 >    ~~~
 >    ubuntu@vm:*-2.4.x$ cd 02_PortingToSingularity
@@ -891,8 +919,8 @@ First, lets take a look into the `Singularity.def` definition file:
 >    ubuntu@vm:02_*Singularity$ sudo singularity build openfoam-2.4.x-myuser.sif Singularity.def
 >    ~~~
 >    {: .bash}
->    - You must be have sudo/root privileges to execute `build`
->    - conversion may take a while. In the meantime let's have a break (or some discussion, depending on the time)
+>    - You must have sudo/root privileges to execute `build`
+>    - conversion may take around 10 minutes
 >    
 >    ~~~
 >    INFO:    Starting build...
@@ -933,9 +961,9 @@ First, lets take a look into the `Singularity.def` definition file:
 >    
 {: .discussion}
 
-> ## Test OpenFOAM tools running from the interior of the container (internal MPICH)
+> ## G.II Test the Singularity image
 >
-> 1. Run the container interactively:
+> 1. Run the container interactively and copy the tutorial to the host:
 >    
 >    ~~~
 >    ubuntu@vm:02_*Singularity$ singularity run openfoam-2.4.x-myuser.sif
@@ -945,18 +973,19 @@ First, lets take a look into the `Singularity.def` definition file:
 >    ~~~
 >    Singularity> mkdir run
 >    Singularity> cd run
->    Singularity> cp -r /opt/OpenFOAM/OpenFOAM-2.4.x/tutorials/incompressible/pimpleFoam/channel395 .
+>    Singularity> cp -r $FOAM_TUTORIALS/incompressible/pimpleFoam/channel395 .
 >    Singularity> cd channel395
 >    Singularity> ls
 >    ~~~
 >    {: .bash}
+>    - Note that the directory from where singularity was called is mounted by default, so you can copy stuff from the interior of the container to the host file system
 >
 >    ~~~
 >    0  0.org  Allrun  constant  system
 >    ~~~
 >    {: .output}
 >
-> 2. Create the mesh
+> 2. Use the OpenFOAM tools to if they work. First, create the mesh:
 >    ~~~
 >    Singularity> blockMesh
 >    ~~~
@@ -1044,7 +1073,7 @@ First, lets take a look into the `Singularity.def` definition file:
 >    ~~~
 >    {: .output}
 >
-> 5. Run the parallel solver with the internal MPICH
+> 5. Run the parallel solver
 >
 >    ~~~
 >    Singularity> mpiexec -n 5 pimpleFoam -parallel
@@ -1086,6 +1115,10 @@ First, lets take a look into the `Singularity.def` definition file:
 >    .
 >    ~~~
 >    {: .output}
+>    - **Important** in an interactive session, the MPI installation that is used is the one present inside the container
+>    - This is what we call, use of the internal MPI (MPICH in this case)
+>    - For the use of the host MPI installation, the container needs to be executed in "hybrid-mode", as we have explained for the use at Pawsey supercomputers
+>    - For executing the singularity container in "hybrid-mode" in your own linux installation, you will need to have a ABI compatible MPICH installed in the host, and follow the instructions from the Singularity documentation (not explained here)
 >    - The solver may take several minutes (~10 to ~20 min)
 >    - We do not have time to wait, so use `<Ctrl-c>` to kill the solver after a few time steps
 >
@@ -1174,8 +1207,11 @@ First, lets take a look into the `Singularity.def` definition file:
 
 <p>&nbsp;</p>
 
+## H. Deploy the image to the system of your preference
 > ## The image is good to go!
 > - Copy it to any system where you want to use it
+> - The system will need to have Singularity installed
+> - And, in order to run parallel solvers in the most efficient way (hybrid mode), it needs to count with an ABI compatible MPICH
 >
 {: .callout}
 

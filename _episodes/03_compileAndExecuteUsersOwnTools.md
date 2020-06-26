@@ -23,6 +23,7 @@ keypoints:
 > - And execute them together with the whole OpenFOAM environment
 > - OpenFOAM containers are usually equipped **only** with the standard tools/solvers
 > - **Nevertheless, users can still compile their own tools and use them with a standard container**
+> - The trick is to **bind** the local host directory to the path where the internal installation looks for user's source files/tools: `WM_PROJECT_USER_DIR`
 >
 {: .prereq}
 
@@ -96,83 +97,85 @@ keypoints:
 
 ## A. Cloning a standard solver into user's own solver `myPimpleFoam`
 
-> ## Main command in the `A.cloneMyPimpleFoam.sh` script:   
->
-> ~~~
-> appDirInside=applications/solvers/incompressible
-> solverOrg=pimpleFoam
-> solverNew=myPimpleFoam
-> srun -n 1 -N 1 singularity exec $theImage bash -c 'cp -r $WM_PROJECT_DIR/'"$appDirInside/$solverOrg $projectUserDir/applications/$solverNew"
-> ~~~
-> {: .bash}
-> - The `WM_PROJECT_DIR` variable only exist inside the container, that is why it is being evaluated using the `bash -c` command and the sigle quotes
-> - (See the explanation of the `bash -c` command at the end of this section if needed)
->
-{: .callout}
-
-> ## Other important parts of the script:
-> ~~~
-> #3. Define the user directory in the local host and the place where to put the solver
-> #projectUserDir=$MYGROUP/OpenFOAM/$USER-$theVersion/workshop/02_runningUsersOwnTools
-> projectUserDir=$SLURM_SUBMIT_DIR/projectUserDir
-> if ! [ -d $projectUserDir/applications ]; then
->    mkdir -p $projectUserDir/applications
-> else
->    echo "The directory $projectUserDir/applications already exists."
-> fi
-> ~~~
-> {: .bash}
+> ## The `A.cloneMyPimpleFoam.sh` script
+> > ## Main command in the script:   
+> >
+> > ~~~
+> > appDirInside=applications/solvers/incompressible
+> > solverOrg=pimpleFoam
+> > solverNew=myPimpleFoam
+> > srun -n 1 -N 1 singularity exec $theImage bash -c 'cp -r $WM_PROJECT_DIR/'"$appDirInside/$solverOrg $projectUserDir/applications/$solverNew"
+> > ~~~
+> > {: .language-bash}
+> > - The `WM_PROJECT_DIR` variable only exist inside the container, that is why it is being evaluated using the `bash -c` command and the sigle quotes
+> > - (See the explanation of the `bash -c` command at the end of this section if needed)
+> >
+> {: .callout}
 > 
-> ~~~
-> #4. Copy the solver from the inside of the container to the local file system
-> appDirInside=applications/solvers/incompressible
-> solverOrg=pimpleFoam
-> solverNew=myPimpleFoam
-> if ! [ -d $projectUserDir/applications/$solverNew ]; then
->    srun -n 1 -N 1 singularity exec $theImage bash -c 'cp -r $WM_PROJECT_DIR/'"$appDirInside/$solverOrg $projectUserDir/applications/$solverNew"
-> else
->    echo "The directory $projectUserDir/applications/$solverNew already exists, no new copy has been performed"
-> fi
-> ~~~
-> {: .bash}
-> - (See the explanation of the `bash -c` command at the end of this section if needed)
-> 
-> ~~~
-> #5. Going into the new solver directory
-> if [ -d $projectUserDir/applications/$solverNew ]; then
->    cd $projectUserDir/applications/$solverNew
->    echo "pwd=$(pwd)"
-> else
->    echo "For some reason, the directory $projectUserDir/applications/$solverNew, does not exist"
->    echo "Exiting"; exit 1
-> fi
-> ~~~
-> {: .bash}
-> 
-> ~~~
-> #6. Remove not needed stuff
-> echo "Removing not needed stuff"
-> rm -rf *DyMFoam SRFP* *.dep
-> ~~~
-> {: .bash}
-> 
-> ~~~
-> #7. Rename the source files and replace words inside for the new solver to be: "myPimpleFoam"
-> echo "Renaming the source files"
-> rename pimpleFoam myPimpleFoam *
-> sed -i 's,pimpleFoam,myPimpleFoam,g' *.C
-> sed -i 's,pimpleFoam,myPimpleFoam,g' *.H
-> ~~~
-> {: .bash}
-> 
-> ~~~
-> #8. Modify files inside the Make directory to create the new executable in $FOAM_USER_APPBIN
-> echo "Adapting files inside the Make directory"
-> sed -i 's,pimpleFoam,myPimpleFoam,g' ./Make/files
-> sed -i 's,FOAM_APPBIN,FOAM_USER_APPBIN,g' ./Make/files
-> ~~~
-> {: .bash}
-> 
+> > ## Other important parts of the script:
+> > ~~~
+> > #3. Define the user directory in the local host and the place where to put the solver
+> > #projectUserDir=$MYGROUP/OpenFOAM/$USER-$theVersion/workshop/02_runningUsersOwnTools
+> > projectUserDir=$SLURM_SUBMIT_DIR/projectUserDir
+> > if ! [ -d $projectUserDir/applications ]; then
+> >    mkdir -p $projectUserDir/applications
+> > else
+> >    echo "The directory $projectUserDir/applications already exists."
+> > fi
+> > ~~~
+> > {: .language-bash}
+> > 
+> > ~~~
+> > #4. Copy the solver from the inside of the container to the local file system
+> > appDirInside=applications/solvers/incompressible
+> > solverOrg=pimpleFoam
+> > solverNew=myPimpleFoam
+> > if ! [ -d $projectUserDir/applications/$solverNew ]; then
+> >    srun -n 1 -N 1 singularity exec $theImage bash -c 'cp -r $WM_PROJECT_DIR/'"$appDirInside/$solverOrg $projectUserDir/applications/$solverNew"
+> > else
+> >    echo "The directory $projectUserDir/applications/$solverNew already exists, no new copy has been performed"
+> > fi
+> > ~~~
+> > {: .language-bash}
+> > - (See the explanation of the `bash -c` command at the end of this section if needed)
+> > 
+> > ~~~
+> > #5. Going into the new solver directory
+> > if [ -d $projectUserDir/applications/$solverNew ]; then
+> >    cd $projectUserDir/applications/$solverNew
+> >    echo "pwd=$(pwd)"
+> > else
+> >    echo "For some reason, the directory $projectUserDir/applications/$solverNew, does not exist"
+> >    echo "Exiting"; exit 1
+> > fi
+> > ~~~
+> > {: .language-bash}
+> > 
+> > ~~~
+> > #6. Remove not needed stuff
+> > echo "Removing not needed stuff"
+> > rm -rf *DyMFoam SRFP* *.dep
+> > ~~~
+> > {: .language-bash}
+> > 
+> > ~~~
+> > #7. Rename the source files and replace words inside for the new solver to be: "myPimpleFoam"
+> > echo "Renaming the source files"
+> > rename pimpleFoam myPimpleFoam *
+> > sed -i 's,pimpleFoam,myPimpleFoam,g' *.C
+> > sed -i 's,pimpleFoam,myPimpleFoam,g' *.H
+> > ~~~
+> > {: .language-bash}
+> > 
+> > ~~~
+> > #8. Modify files inside the Make directory to create the new executable in $FOAM_USER_APPBIN
+> > echo "Adapting files inside the Make directory"
+> > sed -i 's,pimpleFoam,myPimpleFoam,g' ./Make/files
+> > sed -i 's,FOAM_APPBIN,FOAM_USER_APPBIN,g' ./Make/files
+> > ~~~
+> > {: .language-bash}
+> > 
+> {: .solution}
 {: .solution}
 
 > ## A.I Initial steps for dealing with this section **- [Pre-Executed]**
@@ -370,7 +373,7 @@ keypoints:
 >    ~~~
 >    {: .output}
 >   
->    - `WM_PROJECT_USER_DIR` is the "root" path where user's stuff is stored 
+>    - `WM_PROJECT_USER_DIR` is the base path where user's stuff is stored 
 >    - `FOAM_USER_APPBIN` is the place where the binary executables of user's own solvers are stored and looked for
 >    - `FOAM_USER_LIBBIN` is the place where user's own libraries are stored and looked for
 >    - As you can see, the APPBIN and LIBBIN paths are under the WM_PROJECT_USER_DIR path
@@ -482,66 +485,84 @@ keypoints:
 <p>&nbsp;</p>
 
 ## B. Compilation of **myPimpleFoam**
-   
-> ## Main command in the `B.compileMyPimpleFoam.sh` script
->
-> ~~~
-> projectUserDir=$SLURM_SUBMIT_DIR/projectUserDir
-> srun -n 1 -N 1 singularity exec -B $projectUserDir:/home/ofuser/OpenFOAM/ofuser-$theVersion $theImage wmake
-> ~~~
-> {: .bash}
->
+
+> ## The binding
+> - As mentioned above, the trick is to bind a directory in the local host to the internal path where `WM_PROJECT_USER_DIR` point to
+> - Inspect the script to check specific command syntax
+> 
 {: .callout}
 
-> ## Other important parts of the script:
+> ## The `B.compileMyPimpleFoam.sh` script
+> > ## Main command in the script
+> >
+> > ~~~
+> > projectUserDir=$SLURM_SUBMIT_DIR/projectUserDir
+> > srun -n 1 -N 1 singularity exec -B $projectUserDir:/home/ofuser/OpenFOAM/ofuser-$theVersion $theImage wmake
+> > ~~~
+> > {: .language-bash}
+> >
+> {: .callout}
+> 
+> > ## Other important parts of the script:
+> >
+> > ~~~
+> > #3. Going into the new solver directory and creating the logs directory
+> > projectUserDir=$SLURM_SUBMIT_DIR/projectUserDir
+> > solverNew=myPimpleFoam
+> > if [ -d $projectUserDir/applications/$solverNew ]; then
+> >    cd $projectUserDir/applications/$solverNew
+> >    echo "pwd=$(pwd)"
+> > else
+> >    echo "For some reason, the directory $projectUserDir/applications/$solverNew, does not exist"
+> >    echo "Exiting"; exit 1
+> > fi
+> > logsDir=./logs/compile
+> > if ! [ -d $logsDir ]; then
+> >    mkdir -p $logsDir
+> > fi
+> > ~~~
+> > {: .language-bash}
+> > 
+> > ~~~
+> > #4. Use container's "wclean" to clean previously existing compilation 
+> > echo "Cleaning previous compilation"
+> > srun -n 1 -N 1 singularity exec -B $projectUserDir:/home/ofuser/OpenFOAM/ofuser-$theVersion $theImage wclean 2>&1 | tee $logsDir/wclean.$SLURM_JOBID
+> > ~~~
+> > {: .language-bash}
+> > 
+> > ~~~
+> > #5. Use container's "wmake" (and compiler) to compile your own tool
+> > echo "Compiling myPimpleFoam"
+> > srun -n 1 -N 1 singularity exec -B $projectUserDir:/home/ofuser/OpenFOAM/ofuser-$theVersion $theImage wmake 2>&1 | tee $logsDir/wmake.$SLURM_JOBID
+> > ~~~
+> > {: .language-bash}
+> > 
+> > ~~~
+> > #6. Very simple test of the new solver
+> > echo "Performing a basic test"
+> > singularity exec -B $projectUserDir:/home/ofuser/OpenFOAM/ofuser-$theVersion $theImage myPimpleFoam -help | tee $logsDir/myPimpleFoam.$SLURM_JOBID
+> > ~~~
+> > {: .language-bash}
+> {: .solution}
 >
-> ~~~
-> #3. Going into the new solver directory and creating the logs directory
-> projectUserDir=$SLURM_SUBMIT_DIR/projectUserDir
-> solverNew=myPimpleFoam
-> if [ -d $projectUserDir/applications/$solverNew ]; then
->    cd $projectUserDir/applications/$solverNew
->    echo "pwd=$(pwd)"
-> else
->    echo "For some reason, the directory $projectUserDir/applications/$solverNew, does not exist"
->    echo "Exiting"; exit 1
-> fi
-> logsDir=./logs/compile
-> if ! [ -d $logsDir ]; then
->    mkdir -p $logsDir
-> fi
-> ~~~
-> {: .bash}
-> 
-> ~~~
-> #4. Use container's "wclean" to clean previously existing compilation 
-> echo "Cleaning previous compilation"
-> srun -n 1 -N 1 singularity exec -B $projectUserDir:/home/ofuser/OpenFOAM/ofuser-$theVersion $theImage wclean 2>&1 | tee $logsDir/wclean.$SLURM_JOBID
-> ~~~
-> {: .bash}
-> 
-> ~~~
-> #5. Use container's "wmake" (and compiler) to compile your own tool
-> echo "Compiling myPimpleFoam"
-> srun -n 1 -N 1 singularity exec -B $projectUserDir:/home/ofuser/OpenFOAM/ofuser-$theVersion $theImage wmake 2>&1 | tee $logsDir/wmake.$SLURM_JOBID
-> ~~~
-> {: .bash}
-> 
-> ~~~
-> #6. Very simple test of the new solver
-> echo "Performing a basic test"
-> singularity exec -B $projectUserDir:/home/ofuser/OpenFOAM/ofuser-$theVersion $theImage myPimpleFoam -help | tee $logsDir/myPimpleFoam.$SLURM_JOBID
-> ~~~
-> {: .bash}
 {: .solution}
 
 > ## B.I Steps for dealing with the compilation:
-> 1. From the scripts directory, submit the compilation script:
+> 1. From the scripts directory, submit the compilation script (use the reservation for the workshop if available):
 >    ~~~
 >    zeus-1:*-v1912> myReservation=containers 
 >    zeus-1:*-v1912> sbatch --reservation=$myReservation B.compileMyPimpleFoam.sh 
 >    ~~~
 >    {: .bash}
+> 
+>    > ## If you do not have a reservation
+>    > Then, submit normally (or choose the best partition for executing the exercise, the `debugq` for example:)
+>    >    ~~~
+>    >    zeus-1:*-v1912> sbatch -p debugq B.compileMyPimpleFoam.sh
+>    >    ~~~
+>    >    {: .bash}
+>    >
+>    {: .solution}
 > 
 >    ~~~
 >    Submitted batch job 4632558
@@ -618,7 +639,7 @@ keypoints:
 >    ~~~
 >    {: .output}
 >
-> 5. Or you can perform that basic mini-test from the command line:
+> 5. Or you can perform that basic mini-test from the command line (binding the local `projectUserDir` directory):
 >
 >    ~~~
 >    zeus-1:*-v1912> module load singularity
@@ -665,7 +686,7 @@ keypoints:
 
 <p>&nbsp;</p>
 
-## C. Extraction of the tutorial: channel395 **- [Pre-Executed]**
+## C. Extraction of the tutorial: channel395
    
 > ## The `C.extractTutorial.sh` script (main parts to be discussed):
 >
@@ -676,7 +697,7 @@ keypoints:
 > #SBATCH --ntasks=1
 > #SBATCH --partition=copyq #Ideally, you should be using the copyq for this kind of processes
 > ~~~
-> {: .bash}
+> {: .language-bash}
 > 
 > ~~~
 > #4. Copy the tutorialCase to the workingDir
@@ -686,11 +707,11 @@ keypoints:
 >    echo "The case=$caseDir already exists, no new copy has been performed"
 > fi
 > ~~~
-> {: .bash}
+> {: .language-bash}
 > 
 {: .solution}
 
-> ## C.I Steps for dealing with the extraction of the "channel395" case:
+> ## C.I Steps for dealing with the extraction of the "channel395" case: **- [Pre-Executed]**
 > 1. Submit the job (no need for reservation as the script uses the `copyq` partition)
 > 
 >    ~~~
@@ -733,7 +754,7 @@ keypoints:
 
 <p>&nbsp;</p>
 
-## D. Adapt the case to your needs (and Pawsey best practices) **- [Pre-Executed]**
+## D. Adapt the case to your needs (and Pawsey best practices)
 
 > ## The `D.adaptCase.sh` script (main parts to be discussed):
 >
@@ -747,7 +768,7 @@ keypoints:
 > foam_purgeWrite=10
 > sed -i 's,^purgeWrite.*,purgeWrite    '"$foam_purgeWrite"';,' ./system/controlDict
 > ~~~
-> {: .bash}
+> {: .language-bash}
 > 
 > ~~~
 > ##5.2 Defining the use of collated fileHandler of output results 
@@ -756,10 +777,10 @@ keypoints:
 > echo "   fileHandler collated;" >> ./system/controlDict
 > echo "}" >> ./system/controlDict
 > ~~~
-> {: .bash}
+> {: .language-bash}
 {: .solution}
 
-> ## D.I Steps for dealing with the adaptation of the case
+> ## D.I Steps for dealing with the adaptation of the case: **- [Pre-Executed]**
 >
 > 1. Submit the adaptation script
 > 
@@ -843,14 +864,14 @@ keypoints:
 > #SBATCH --time=0:10:00
 > #SBATCH --export=none
 > ~~~
-> {: .bash}
+> {: .language-bash}
 >
 > ~~~
 > #6. Defining the ioRanks for collating I/O
 > # groups of 2 for this exercise (please read our documentation for the recommendations for production runs)
 > export FOAM_IORANKS='(0 2 4 6)'
 > ~~~
-> {: .bash}
+> {: .language-bash}
 > 
 > ~~~
 > #7. Perform all preprocessing OpenFOAM steps up to decomposition
@@ -859,7 +880,7 @@ keypoints:
 > echo "Executing decomposePar"
 > srun -n 1 -N 1 singularity exec $theImage decomposePar -cellDist -force 2>&1 | tee $logsDir/log.decomposePar.$SLURM_JOBID
 > ~~~
-> {: .bash}
+> {: .language-bash}
 {: .solution}
 
 > ## E.I Steps for dealing with decomposition:
@@ -902,86 +923,95 @@ keypoints:
 
 ## F. Executing the **NEW** solver **"myPimpleFoam"**
 
-> ## Main command in the `F.runFoam.sh` script
-> ~~~
-> of_solver=myPimpleFoam
-> projectUserDir=$SLURM_SUBMIT_DIR/projectUserDir
-> srun -n $SLURM_NTASKS -N $SLURM_JOB_NUM_NODES singularity exec -B $projectUserDir:/home/ofuser/OpenFOAM/ofuser-$theVersion $theImage $of_solver -parallel 
-> ~~~
-> - The important concept here is the binding of a local folder for the container to be able to read the binary executable
-> {: .bash}
+> ## The binding
+> - Again, the important concept here is the binding of the local folder for the container to be able to read the binary executable
+> - And, obviously, to call the own solver: `myPimpleFoam` to perform the solution
+> - Check the interior of the scripts for especific command syntax
+>
 {: .callout}
 
-> ## Other important parts of the script:
-> ~~~
-> #SBATCH --ntasks=4
-> #SBATCH --mem=16G
-> #SBATCH --ntasks-per-node=28
-> #SBATCH --cluster=zeus
-> ~~~
-> {: .bash}
->
-> ~~~
-> #5. Reading OpenFOAM decomposeParDict settings
-> foam_numberOfSubdomains=$(grep "^numberOfSubdomains" ./system/decomposeParDict | tr -dc '0-9')
-> ~~~
-> {: .bash}
+> ## The `F.runFoam.sh` script 
+> > ## Main command in the script:
+> > ~~~
+> > of_solver=myPimpleFoam
+> > projectUserDir=$SLURM_SUBMIT_DIR/projectUserDir
+> > srun -n $SLURM_NTASKS -N $SLURM_JOB_NUM_NODES singularity exec -B $projectUserDir:/home/ofuser/OpenFOAM/ofuser-$theVersion $theImage $of_solver -parallel 
+> > ~~~
+> > {: .language-bash}
+> {: .callout}
 > 
-> ~~~
-> #7. Checking if the number of tasks coincide with the number of subdomains
-> if [[ $foam_numberOfSubdomains -ne $SLURM_NTASKS ]]; then
->    echo "foam_numberOfSubdomains read from ./system/decomposeParDict is $foam_numberOfSubdomains"
->    echo "and"
->    echo "SLURM_NTASKS in this job is $SLURM_NTASKS"
->    echo "These should be the same"
->    echo "Therefore, exiting this job"
->    echo "Exiting"; exit 1
-> fi
-> ~~~
-> {: .bash}
-> 
-> ~~~
-> #8. Defining OpenFOAM controlDict settings for this run
-> foam_startFrom=startTime
-> #foam_startFrom=latestTime
-> foam_startTime=0
-> #foam_startTime=15
-> foam_endTime=10
-> #foam_endTime=30
-> foam_writeInterval=1
-> foam_purgeWrite=10
-> ~~~
-> {: .bash}
-> 
-> ~~~
-> #9. Changing OpenFOAM controlDict settings
-> sed -i 's,^startFrom.*,startFrom    '"$foam_startFrom"';,' system/controlDict
-> sed -i 's,^startTime.*,startTime    '"$foam_startTime"';,' system/controlDict
-> sed -i 's,^endTime.*,endTime    '"$foam_endTime"';,' system/controlDict
-> sed -i 's,^writeInterval.*,writeInterval    '"$foam_writeInterval"';,' system/controlDict
-> sed -i 's,^purgeWrite.*,purgeWrite    '"$foam_purgeWrite"';,' system/controlDict
-> ~~~
-> {: .bash}
-> 
-> ~~~
-> #10. Defining the solver
-> of_solver=myPimpleFoam
-> ~~~
-> {: .bash}
-> 
-> ~~~
-> #11. Defining the projectUserDir to be mounted into the path of the internal WM_PROJECT_USER_DIR
-> projectUserDir=$SLURM_SUBMIT_DIR/projectUserDir
-> ~~~
-> {: .bash}
-> 
-> ~~~
-> #12. Execute the case 
-> echo "About to execute the case"
-> srun -n $SLURM_NTASKS -N $SLURM_JOB_NUM_NODES singularity exec -B $projectUserDir:/home/ofuser/OpenFOAM/ofuser-$theVersion $theImage $of_solver -parallel 2>&1 | tee $logsDir/log.$theSolver.$SLURM_JOBID
-> echo "Execution finished"
-> ~~~
-> {: .bash}
+> > ## Other important parts of the script:
+> > ~~~
+> > #SBATCH --ntasks=4
+> > #SBATCH --mem=16G
+> > #SBATCH --ntasks-per-node=28
+> > #SBATCH --cluster=zeus
+> > ~~~
+> > {: .language-bash}
+> >
+> > ~~~
+> > #5. Reading OpenFOAM decomposeParDict settings
+> > foam_numberOfSubdomains=$(grep "^numberOfSubdomains" ./system/decomposeParDict | tr -dc '0-9')
+> > ~~~
+> > {: .language-bash}
+> > 
+> > ~~~
+> > #7. Checking if the number of tasks coincide with the number of subdomains
+> > if [[ $foam_numberOfSubdomains -ne $SLURM_NTASKS ]]; then
+> >    echo "foam_numberOfSubdomains read from ./system/decomposeParDict is $foam_numberOfSubdomains"
+> >    echo "and"
+> >    echo "SLURM_NTASKS in this job is $SLURM_NTASKS"
+> >    echo "These should be the same"
+> >    echo "Therefore, exiting this job"
+> >    echo "Exiting"; exit 1
+> > fi
+> > ~~~
+> > {: .language-bash}
+> > 
+> > ~~~
+> > #8. Defining OpenFOAM controlDict settings for this run
+> > foam_startFrom=startTime
+> > #foam_startFrom=latestTime
+> > foam_startTime=0
+> > #foam_startTime=15
+> > foam_endTime=10
+> > #foam_endTime=30
+> > foam_writeInterval=1
+> > foam_purgeWrite=10
+> > ~~~
+> > {: .language-bash}
+> > 
+> > ~~~
+> > #9. Changing OpenFOAM controlDict settings
+> > sed -i 's,^startFrom.*,startFrom    '"$foam_startFrom"';,' system/controlDict
+> > sed -i 's,^startTime.*,startTime    '"$foam_startTime"';,' system/controlDict
+> > sed -i 's,^endTime.*,endTime    '"$foam_endTime"';,' system/controlDict
+> > sed -i 's,^writeInterval.*,writeInterval    '"$foam_writeInterval"';,' system/controlDict
+> > sed -i 's,^purgeWrite.*,purgeWrite    '"$foam_purgeWrite"';,' system/controlDict
+> > ~~~
+> > {: .language-bash}
+> > 
+> > ~~~
+> > #10. Defining the solver
+> > of_solver=myPimpleFoam
+> > ~~~
+> > {: .language-bash}
+> > 
+> > ~~~
+> > #11. Defining the projectUserDir to be mounted into the path of the internal WM_PROJECT_USER_DIR
+> > projectUserDir=$SLURM_SUBMIT_DIR/projectUserDir
+> > ~~~
+> > {: .language-bash}
+> > 
+> > ~~~
+> > #12. Execute the case 
+> > echo "About to execute the case"
+> > srun -n $SLURM_NTASKS -N $SLURM_JOB_NUM_NODES singularity exec -B $projectUserDir:/home/ofuser/OpenFOAM/ofuser-$theVersion $theImage $of_solver -parallel 2>&1 | tee $logsDir/log.$theSolver.$SLURM_JOBID
+> > echo "Execution finished"
+> > ~~~
+> > {: .language-bash}
+> >
+> {: .solution}
 >
 {: .solution}
 
