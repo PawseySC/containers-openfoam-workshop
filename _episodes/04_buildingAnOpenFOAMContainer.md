@@ -437,7 +437,7 @@ You'll need to clone the git repository into your linux environment:
 
 <p>&nbsp;</p>
 
-## E. More on the Dockerfile
+## D. More on the Dockerfile
 
 > ## Non-default settings in the installation are:
 > - For the OpenFOAM installation to understand the use of the system-MPI (MPICH in this case), we need to modify the default settings
@@ -510,10 +510,6 @@ You'll need to clone the git repository into your linux environment:
 > <p>&nbsp;</p>
 >
 {: .solution}
-
-## E. Building a second image 
-
-In this second exercise, the building process will advance a bit further, but will stop at the point where the following trick is set:
 
 > ## The `RUN StopHere` trick in the `Dockerfile.02`:
 > ~~~
@@ -695,7 +691,7 @@ In this second exercise, the building process will advance a bit further, but wi
 
 <p>&nbsp;</p>
 
-## F. Final remarks on the building of OpenFOAM containers at Pawsey with Docker
+## E. Final remarks on the building of OpenFOAM containers at Pawsey with Docker
 
 > ## General recommendations:
 > - Pawsey maintains several images that can be used for running applications or for building new ones
@@ -746,7 +742,7 @@ In this second exercise, the building process will advance a bit further, but wi
 >
 {: .callout}
 
-> ## F.I Final steps in the creation of the full Docker container
+> ## E.I Final steps in the creation of the full Docker container
 >
 > 1. The final building step (after reaching the right `Dockerfile` recipe) would be:
 >
@@ -878,7 +874,7 @@ In this second exercise, the building process will advance a bit further, but wi
 >
 {: .discussion}
 
-## G. Converting the container into Singularity format
+## F. Converting the container into Singularity format
 
 > ## The `Singularity.def` file:
 >
@@ -900,7 +896,7 @@ In this second exercise, the building process will advance a bit further, but wi
 > - The last line writes the instruction of sourcing the bashrc file every time the a container instance is created with this image
 {: .callout}
 
-> ## G.I Steps for porting the image into Singularity:
+> ## F.I Steps for porting the image into Singularity:
 > 1. cd into the `02_PortingToSingularity` directory
 >    ~~~
 >    ubuntu@vm:*-2.4.x$ cd 02_PortingToSingularity
@@ -961,7 +957,7 @@ In this second exercise, the building process will advance a bit further, but wi
 >    
 {: .discussion}
 
-> ## G.II Test the Singularity image
+> ## F.II Test the Singularity image
 >
 > 1. Run the container interactively and copy the tutorial to the host:
 >    
@@ -1207,7 +1203,7 @@ In this second exercise, the building process will advance a bit further, but wi
 
 <p>&nbsp;</p>
 
-## H. Deploy the image to the system of your preference
+## G. Deploy the image to the system of your preference
 > ## The image is good to go!
 > - Copy it to any system where you want to use it
 > - The system will need to have Singularity installed

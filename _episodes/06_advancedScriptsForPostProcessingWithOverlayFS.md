@@ -480,13 +480,21 @@ keypoints:
 > ~~~
 > #8. Transfer the content of the bak.processor* directories into the overlayFS
 > echo "Copying OpenFOAM files inside bak.processor* into the overlays"
-> for ii in $(seq 0 $(( foam_numberOfSubdomains - 1 ))); do
->     echo "Writing into overlay${ii}"
->     srun -n 1 -N 1 --mem-per-cpu=0 --exclusive singularity exec --overlay overlay${ii} $theImage cp -r bak.processor${ii}/* $insideDir/processor${ii}/ &
-> done
-> wait
+> copyIntoOverlayII 'bak.processor${ii}/*' "$insideDir/"'processor${ii}/' "$foam_numberOfSubdomains" "true";success=$? #Calling the function for copying into the overlays (see usage instructions in the function definition)
+> if [ $success -ne 0 ]; then
+>    echo "Failed creating the inside directories, exiting"
+>    echo "Exiting";exit 1
+> fi
 > ~~~
 > {: .language-bash}
+> - Note the use of the `copyIntoOverlayII` function
+> - The function receives as arguments: 1) the source of the copy, 2) the destination, 3) the number of subdomains and 4) a boolean for replacing content or not
+> - Note the use of single quotes for passing the wildcard '*' to the function without evaluation
+> - Also note the use of single quotes '${ii}' in the place where the number of the overlayN/processorN is needed
+> - The returned value of the function is saved in the `success` variable and then checked
+> - Read the definition of the function in `../auxiliaryScripts/ofContainersOverlayFunctions.sh`
+>
+> <p>&nbsp;</p>
 >
 > ~~~
 > #9. Mark the initial conditions time directory as already fully reconstructed
@@ -498,7 +506,6 @@ keypoints:
 > - In this case, as the time `0` is originally reconstructed by default, it is marked
 >
 > <p>&nbsp;</p>
->
 >
 > ~~~
 > #10. List the content of directories inside the overlay* files
@@ -831,7 +838,7 @@ keypoints:
 >     unset arrayCopyIntoBak
 >     arrayCopyIntoBak=("${hereToDoReconstruct[@]}")
 >     replace="true"
->     copyIntoBak "$insideDir" "$foam_numberOfSubdomains" "$replace" "${arrayCopyIntoBak[@]}";success=$? #Calling the function to copy time directories into bak.processor*
+>     copyResultsIntoBak "$insideDir" "$foam_numberOfSubdomains" "$replace" "${arrayCopyIntoBak[@]}";success=$? #Calling the function to copy time directories into bak.processor*
 >     if [ $success -ne 0 ]; then
 >        echo "Failed transferring files into bak.processor* directories"
 >        echo "Exiting";exit 1
@@ -839,7 +846,7 @@ keypoints:
 >     ~~~
 >     {: .language-bash}
 >     - The array `hereToDoReconstruct` has the times to be processed in the current batch
->     - Note the use of the `copyIntoBak` function
+>     - Note the use of the `copyResultsIntoBak` function
 >     - The function receives as arguments: 1) the path inside the overlays, 2) the number of subdomains, 3) the indication for replacing or not already existing times in the bak directories and 4) the array with the times to process.
 >     - The returned value of the function is saved in the success variable and then checked
 >     - Read the definition of the function in ../auxiliaryScripts/ofContainersOverlayFunctions.sh
