@@ -528,6 +528,7 @@ keypoints:
 >    zeus-1:*-v1912> sbatch --reservation=$myReservation D.runFoam.sh 
 >    ~~~
 >    {: .bash}
+>    - If a reservation is not available, do not use the option. (Or you can use the debugq: `--partition=debugq` instead.)
 >    
 >    ~~~
 >    Submitted batch job 4632685 on cluster zeus
@@ -638,6 +639,8 @@ keypoints:
 >    ~~~
 >    zeus-1:*-v1912> sbatch --reservation=$myReservation E.reconstructFoam.sh 
 >    ~~~
+>    {: .bash}
+>    - If a reservation is not available, do not use the option. (Or you can use the debugq: `--partition=debugq` instead.)
 >    
 >    ~~~
 >    Submitted batch job 4632899 on cluster zeus

@@ -8,8 +8,8 @@ objectives:
 - Use OverlayFS for saving results and reduce the number of files in the host file system
 keypoints:
 - Singularity can deal with an OverlayFS, but only one OverlayFS can be mounted per container instance
-- As each core writes results to a single `processorN`, this works for saving results inside each `overlayN`
-- Unfortunately, the `reconstructPar` tool cannot read results from several `overlayN` files. Therefore, decomposed results must be copied back to the host file system before reconstruction.
+- As each core writes results to a single `processor*`, this works for saving results inside the corresponding `overlay*`
+- Unfortunately, the `reconstructPar` tool cannot read results from several `overlay*` files at the same time. Therefore, decomposed results must be copied back to the host file system before reconstruction.
 - Last point may seem like a killer, but extraction and reconstruction may be performed in small batches avoiding the appearence of many files at the same time in the host file system.
 - Here the small batch is of size=1 (just a single time result), but the following episode deals with batches of larger size
 ---
@@ -70,9 +70,9 @@ keypoints:
 > 1. Proceed with settings and decomposition of your case as normal
 >    <p>&nbsp;</p>
 > 2. Rename the `processor0`, `processor1` ... `processor4` to `bak.processor0`, `bak.processor1` ... `bak.processor4`
->      - Now the initial conditions and decomposed mesh are in the `bak.processorN` subdirectories
+>      - Now the initial conditions and decomposed mesh are in the `bak.processor*` subdirectories
 >      - You can access to the information directly from those directories
->      - If you need an OpenFOAM tool to access that information, you'll need to make use of soft links to "trick" OpenFOAM. But, in principle, soft links pointing to the `bak.processorN` directories would not be needed during execution. They will only be needed for the reconstruction (see reconstruction steps in the following section).
+>      - If you need an OpenFOAM tool to access that information, you'll need to make use of soft links to "trick" OpenFOAM. But, in principle, soft links pointing to the `bak.processor*` directories would not be needed during execution. They will only be needed for the reconstruction (see reconstruction steps in the following section).
 >      - (Do not get confused, for this exercise, the tutorial for OpenFOAM-2.4.x uses 5 subdomains: 0,1,...,4)
 >    <p>&nbsp;</p>
 >
@@ -84,13 +84,13 @@ keypoints:
 >    <p>&nbsp;</p>
 > 2. In the local host, copy that file to create the needed replicas of OverlayFS: `overlay1`, `overlay2` ... `overlay4`
 >    <p>&nbsp;</p>
-> 3. For each `ovelayN` create a corresponding `processorN` directory inside (using an ubuntu-based container):
+> 3. For each `ovelay*` create a corresponding `processor*` directory in the internal directory structure (using an ubuntu-based container):
 >      - `insideDir=/overlayOpenFOAM/run/channel395`
 >      - `mkdir -p $insideDir/processor0` in `overlay0`
 >      - ...
 >      - `mkdir -p $insideDir/processor4` in `overlay4`
 >    <p>&nbsp;</p>
-> 4. For each `overlayN` copy the initial conditions and the mesh information from directory `bak.processorN` into the `processorN` directories inside the `overlayN` file (using an ubuntu-based container): 
+> 4. For each `overlay*` copy the initial conditions and the mesh information from the corresponding directory `bak.processor*` into the `processor*` directory in the internal structure of the corresponding `overlay*` file (using an ubuntu-based container): 
 >      - `cp -r bak.processor0/* $insideDir/processor0`
 >      - ...
 >      - `cp -r bak.processor4/* $insideDir/processors4`
@@ -99,7 +99,7 @@ keypoints:
 {: .callout}
 
 > ## c) Use soft links to trick the OpenFOAM tools to write towards the interior of the OverlayFS
-> 1. In the case directory, create soft-links named `processorN` that point to the internal directories:
+> 1. In the case directory, create soft-links named `processor*` that point to the internal directories:
 >      - `ln -s $insideDir/processor0 processor0` 
 >      - ...
 >      - `ln -s $insideDir/processor4 processor4`
@@ -111,11 +111,11 @@ keypoints:
 
 > ## d) Execute the containerised solver in hybrid mode, mounting one OverlayFS file per task
 >
-> 1. Execute the solver in hybrid-mode, allowing MPI task `N` to mount its corresponding `overlayN` file
->      - Each MPI task spawned by `srun` will have an id: `SLURM_PROCID` with values 0,1,...,4
+> 1. Execute the solver in hybrid-mode, allowing MPI task `ID` to mount its corresponding `overlay${ID}` file
+>      - Each MPI task spawned by `srun` will have an ID given by the slurm variable: `SLURM_PROCID` with values 0,1,...,4
 >      - For example, if `SLURM_PROCID=0`, then the mounted OverlayFS file would be `overlay0`
 >      - This allows that:
->          - As `SLURM_PROCID=0`, then OpenFOAM will read/write to `processor0` (which is a link that points to `$insideDir/processor0` in `overlay0`) 
+>          - As `SLURM_PROCID=0`, then OpenFOAM will read/write to `processor0` (which is a link that points towards the interlnal structure of `overlay0`, specifically towards the directory `$insideDir/processor0`) 
 >          - The same for the other MPI tasks
 >      - Results will exist inside the OverlayFS files
 >    <p>&nbsp;</p>
@@ -350,6 +350,7 @@ keypoints:
 >    zeus-1:*-2.4.x> sbatch --reservation=$myReservation B.decomposeFoam.sh 
 >    ~~~
 >    {: .bash}
+>    - If a reservation is not available, do not use the option. (Or you can use the debugq: `--partition=debugq` instead.)
 >    
 >    ~~~
 >    Submitted batch job 4632558
@@ -380,7 +381,7 @@ keypoints:
 >    0  constant
 >    ~~~
 >    {: .output}
->    - Note that one `processorN` directory was created per `numberOfSubdomains` (The number of subdomains is set in the `system/decomposeParDict` dictionary)
+>    - Note that a `processor*` directory was created per `numberOfSubdomains` (The number of subdomains is set in the `system/decomposeParDict` dictionary)
 >    - Also note that this tutorial uses 5 subdomains (and 5 cores when executing the solver (below))
 >
 > 3. You should also check for success/errors in:
@@ -534,6 +535,7 @@ keypoints:
 >    zeus-1:*-2.4.x> sbatch --reservation=$myReservation C.prepareOverlayFoam.sh 
 >    ~~~
 >    {: .bash}
+>    - If a reservation is not available, do not use the option. (Or you can use the debugq: `--partition=debugq` instead.)
 >    
 >    ~~~
 >    Submitted batch job 4642685 on cluster zeus
@@ -553,8 +555,8 @@ keypoints:
 >    0.org  bak.processor0  bak.processor2  bak.processor4  logs      overlay1  overlay3  system
 >    ~~~
 >    {: .output}
->    - There are now 5 `overlayN` files
->    - All `processorN` directories have been renamed to `bak.processorN`
+>    - There are now 5 `overlay*` files
+>    - All `processor*` directories have been renamed to `bak.processor*`
 >
 > 3. Explore the content of one of the overlay files:
 >
@@ -612,13 +614,15 @@ keypoints:
 > ~~~
 > #8. Execute the case using the softlinks to write inside the overlays
 > echo "About to execute the case"
-> srun -n $SLURM_NTASKS -N $SLURM_JOB_NUM_NODES bash -c 'singularity exec --overlay overlay${SLURM_PROCID} '"$theImage"' pimpleFoam -parallel 2>&1' | tee $logsDir/log.pimpleFoam.$SLURM_JOBID
+> srun -n $SLURM_NTASKS -N $SLURM_JOB_NUM_NODES bash -c "singularity exec --overlay "'overlay${SLURM_PROCID}'" $theImage pimpleFoam -parallel 2>&1" | tee $logsDir/log.pimpleFoam.$SLURM_JOBID
 > echo "Execution finished"
 > ~~~
 > {: .bash}
 > - VERY IMPORTANT: Note that the singularity command is called inside a `bash -c` command
 > - This is the way we allow each MPI task to pick a different overlay file through the `SLURM_PROCID` variable
-> - Here, `theImage` is not a global environment variable, so we use the shift to a `"..."` section to evaluate the variable in the host shell
+> - Here, `SLURM_PROCID` is slurm environment variable which needs to be evaluated when executing the container, so we use the section in single quotes `'...'` to allow the internal evaluation of that variable
+> - Here, `theImage` is not a global environment variable, is evaluated by the host shell in a section with double quotes `"..."` at the command line
+> - The total string passed to `bash -c` is the concatenation of two doble quotes sections with a single quotes section in between
 > 
 > <p>&nbsp;</p>
 >
@@ -637,6 +641,7 @@ keypoints:
 >    zeus-1:*-2.4.x> sbatch --reservation=$myReservation D.runFoam.sh 
 >    ~~~
 >    {: .bash}
+>    - If a reservation is not available, do not use the option. (Or you can use the debugq: `--partition=debugq` instead.)
 >    
 >    ~~~
 >    Submitted batch job 4632685 on cluster zeus
@@ -686,7 +691,7 @@ keypoints:
 >    ~~~
 >    {: .output}
 > 
-> 3. You can see in the case directory that now there are several `processorN` **soft links**
+> 3. You can see in the case directory that now there are several `processor*` **soft links**
 >    ~~~
 >    zeus-1:*-2.4.x> cd run/channel395
 >    zeus-1:channel395> ls -lat 
@@ -720,7 +725,7 @@ keypoints:
 >    -rwxrwx---+  1 espinosa pawsey0001        483 May 25 14:03 Allrun
 >    ~~~
 >    {: .output}
->    - The `processorN` soft links are pointing to the directories inside the `overlayN` files
+>    - The `processor*` soft links are pointing to the directories inside the `overlay*` files
 >
 >    
 >    ~~~
@@ -732,7 +737,7 @@ keypoints:
 >    ls: cannot access 'processor1/': No such file or directory
 >    ~~~
 >    {: .output}
->    - The host shell cannot read inside the overlayN files, and that is why the links appear broken 
+>    - The host shell cannot read the internal directory structure that _lives_ the overlay* files, and that is why the links appear broken 
 >
 > 4. Check that the solver gave some results by listing the interior of an overlay file:
 > 
@@ -763,10 +768,10 @@ keypoints:
 > - Yes, this implies that the results need to be copied back to the host file system before reconstruction
 > - This is the inverse operation to the process of copying the initial decomposition into the OverlayFS files (explained at the beginning of this episode)
 > - But in order to avoid the presence of many files in the host, this should be done by small batches:
->    1. Copy small batch of results from the interior to the `bak.processorN` directories
->    2. Now create `processorN` soft links to point to `bak.processorN` directories and not to the OverlayFS interior
+>    1. Copy small batch of results from the internal structure of `overlay*` towards the `bak.processor*` directories in the host file system
+>    2. Now create `processor*` soft links to point towards the corresponding `bak.processor*` directories and not to the OverlayFS interior
 >    3. Reconstruct that small batch (here we use batch size=1, but the following episode uses larger batches)
->    4. Remove the reconstructed times from the `bak.processorN` directories
+>    4. After reconstruction, the reconstructed time-results now exist in the main case directory. Then, remove the files/directories from the decomposed result-times inside the `bak.processor*` as they are not needed anymore (and because we do not want to keep a large number of files).
 >
 {: .prereq}
 
@@ -791,7 +796,7 @@ keypoints:
 > {: .bash}
 > - The time to be reconstructed is `reconstructionTime=10`
 > - (Here we only reconstruct a single time in each attempt, but batches of larger size are explained in the following episode)
-> - To be able to reconstruct a specific time, information needs to be transferred again to the `bak.processorN` directories
+> - To be able to reconstruct a specific time-result, information needs to be transferred to the corresponding `bak.processor*` directories
 >
 > <p>&nbsp;</p>
 > 
@@ -805,7 +810,7 @@ keypoints:
 > wait
 > ~~~
 > {: .bash}
-> - Now new `processorN` soft links will point towards the `bak.processorN` physical directories
+> - Now new `processor*` soft links will point towards the `bak.processor*` physical directories
 >
 > <p>&nbsp;</p>
 > 
@@ -829,6 +834,7 @@ keypoints:
 >    zeus-1:*-2.4.x> sbatch --reservation=$myReservation E.reconstructFromOverlay.sh 
 >    ~~~
 >    {: .bash}
+>    - If a reservation is not available, do not use the option. (Or you can use the debugq: `--partition=debugq` instead.)
 >    
 >    ~~~
 >    Submitted batch job 4632899 on cluster zeus

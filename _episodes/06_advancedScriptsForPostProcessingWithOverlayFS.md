@@ -10,11 +10,11 @@ keypoints:
 - No, unfortunately a container cannot mount more than 1 OverlayFS file at the same time
 - Yes, this implies that the results need to be copied back to the host file system before reconstruction
 - In order to avoid the presence of many files in the host, this should be done by small batches
-    - 1.Copy small batch of results from the interior to the `bak.processorN` directories
-    - 2.Now create `processorN` soft links to point to `bak.processorN` directories and not to the OverlayFS interior
+    - 1.Copy small batch of results from the interior of the `./overlayFSDir/overlay*` files towards the `./bakDir/bak.processor*` directories in the host file system
+    - 2.Now create `processor*` soft links to point to `./bakDir/bak.processor*` directories and not to the directory structure inside the OverlayFS files
     - 3.Reconstruct that small batch
-    - 4.Remove the reconstructed times from the `bak.processorN` directories
-    - 5.Continue the cycle until postprocessing all the times needed
+    - 4.Remove the decomposed result-times from the `./bakDir/bak.processor*` directories. Only the fully reconstructed result-times are kept in the host. And the original decomposed results are only kept inside the OverlayFS files.
+    - 5.Continue the cycle until postprocessing all the result-times needed
 ---
 
 <p>&nbsp;</p>
@@ -23,16 +23,16 @@ keypoints:
 
 > ## Postprocessing results in batches
 > - The workflow presented here is extremelly similar to that in the previous episode (please study previous one first)
-> - The main difference is that the reconstruction of results from the overlay can handle many times
-> - All the times to be postprocessed (reconstructed) are not extracted from the overlays at the same together
-> - In order to avoid the existence of many files in the shared file system, the extraction of the decomposed times is performed in batches of small size
-> - All the decomposed times of each small batch are postprocessed (reconstructed) and then deleted before the following batch is extracted
+> - Some minor differences in this episode are: 1) the `overlay*` files are kept in the directory `./overlayFSDir`, and 2) the renamed `bak.processor*` directories are moved to the directory `./bakDir`
+> - And **the main difference** from the previous episode is: the reconstruction of the existing results can handle many time-results in the same job
+> - Nevertheless, in order to avoid the creation of a large number of files in the host file system, the extraction of the result-times from the overlayFS files is performed in batches of small size
+> - All the decomposed result-times of each small batch are postprocessed (reconstructed) and then deleted before the following batch is extracted/processed
 >
 {: .prereq}
 
 > ## Use of bash functions
 > - Another difference in the workflow scripts for this episode is the use of bash functions
-> - These functions are defined in a separate bash script contained in a directory named `auxiliaryScripts`
+> - These functions are defined in a separate bash script contained in the directory named `../../A1_auxiliaryScripts`
 > - That script is sourced from all the workflow (A,B,C..G) scripts
 > - In practice, users should keep this directory in a known location and source the definition of bash functions from there
 >
@@ -43,12 +43,11 @@ keypoints:
 > In this episode, we make use of a series of scripts to cover a typical compilation/execution workflow. Lets start by listing the scripts.
 >
 >
-> 1. cd into the directory for the episode and list the content of the `auxiliaryScripts` directory
+> 1. List the content of the `A1_auxiliaryScripts` directory:
 >
 >    ~~~
 >    zeus-1:~> cd $MYSCRATCH/pawseyTraining/containers-openfoam-workshop-scripts
->    zeus-1:*-scripts> cd 06_advancedScriptsForPostProcessingWithOverlayFS
->    zeus-1:*OverlayFS> ls auxiliaryScripts
+>    zeus-1:*-scripts> ls A1_auxiliaryScripts
 >    ~~~
 >    {: .bash}
 >    
@@ -60,10 +59,10 @@ keypoints:
 >    
 > <p>&nbsp;</p>
 >
-> 2. cd into the directory where the provided scripts are. In this case we'll use OpenFOAM-2.4.x.
+> 2. cd into the directory that contains the scripts for executing the workflow of this exercise. In this case we'll use OpenFOAM-2.4.x.
 > 
 >    ~~~
->    zeus-1:*OverlayFS> cd example_OpenFOAM-2.4.x
+>    zeus-1:*-scripts> cd 06_advancedScriptsForPostProcessingWithOverlayFS/example_OpenFOAM-2.4.x
 >    zeus-1:*-2.4.x> ls
 >    ~~~
 >    {: .bash}
@@ -86,9 +85,9 @@ keypoints:
 >    - `B.decomposeFoam.sh` is decomposing the case to solve
 >    - `C.setupOverlayFoam.sh` is for creating the OverlayFS files to store the result
 >    - `D.runFoam.sh` is for executing the solver (and writing results to the interior of the overlay files) 
->    - `E.reconstructFromOverlay.sh` is for reconstructing several times in batches
->    - `F.extractFromOverlayIntoBak.sh` is for extracting a batch of times from the overlay files (no reconstruction)
->    - `G.reconstructFromBak.sh` is for reconstructing existing results in the `bak.processorN` directories
+>    - `E.reconstructFromOverlay.sh` is for reconstructing several result-times in batches
+>    - `F.extractFromOverlayIntoBak.sh` is for extracting a batch of result-times from the overlay files (no reconstruction)
+>    - `G.reconstructFromBak.sh` is for reconstructing existing results in the `bak.processor*` directories
 >
 >    <p>&nbsp;</p>
 >
@@ -97,7 +96,7 @@ keypoints:
 >
 >    <p>&nbsp;</p>
 >
->    - `../auxiliaryScripts/ofContainersOverlayFunctions.sh` is the script that contains the definition of the bash functions utilised in the workflow scripts (This script is sourced from all the workflow scripts)
+>    - `../../A1_auxiliaryScripts/ofContainersOverlayFunctions.sh` is the script that contains the definition of the bash functions utilised in the workflow scripts (This script is sourced from all the workflow scripts)
 >
 {: .prereq}
 
@@ -147,7 +146,7 @@ keypoints:
 > > ~~~
 > > #Defining the path of the auxiliary scripts for dealing with overlayFS
 > > #(Define the path to a more permanent directory for production workflows)
-> > auxScriptsDir=$SLURM_SUBMIT_DIR/../auxiliaryScripts
+> > auxScriptsDir=$SLURM_SUBMIT_DIR/../../A1_auxiliaryScripts
 > > ~~~
 > > {: .language-bash}
 > >
@@ -213,7 +212,7 @@ keypoints:
 >    ~~~
 >    {: .bash}
 > 
->    > ## The settings that were adapted in `..../run/channel395/system/controlDict` 
+>    > ## The settings that were adapted in `./run/channel395/system/controlDict` 
 >    > 
 >    > - To use binary writing format to accelerate writing and reduce the size of the files
 >    > 
@@ -262,7 +261,7 @@ keypoints:
 > > ~~~
 > > #Defining the path of the auxiliary scripts for dealing with overlayFS
 > > #(Define the path to a more permanent directory for production workflows)
-> > auxScriptsDir=$SLURM_SUBMIT_DIR/../auxiliaryScripts
+> > auxScriptsDir=$SLURM_SUBMIT_DIR/../../A1_auxiliaryScripts
 > > ~~~
 > > {: .language-bash}
 > >
@@ -303,6 +302,7 @@ keypoints:
 >    zeus-1:*-2.4.x> sbatch --reservation=$myReservation B.decomposeFoam.sh 
 >    ~~~
 >    {: .bash}
+>    - If a reservation is not available, do not use the option. (Or you can use the debugq: `--partition=debugq` instead.)
 >    
 >    ~~~
 >    Submitted batch job 4632558
@@ -333,7 +333,7 @@ keypoints:
 >    0  constant
 >    ~~~
 >    {: .output}
->    - Note that one `processorN` directory was created per `numberOfSubdomains` (The number of subdomains is set in the `system/decomposeParDict` dictionary)
+>    - Note that one `processor*` directory was created per `numberOfSubdomains` (The number of subdomains is set in the `system/decomposeParDict` dictionary)
 >    - Also note that this tutorial uses 5 subdomains (and 5 cores when executing the solver (below))
 >
 > 3. You should also check for success/errors in:
@@ -385,7 +385,7 @@ keypoints:
 > > ~~~
 > > #Defining the path of the auxiliary scripts for dealing with overlayFS
 > > #(Define the path to a more permanent directory for production workflows)
-> > auxScriptsDir=$SLURM_SUBMIT_DIR/../auxiliaryScripts
+> > auxScriptsDir=$SLURM_SUBMIT_DIR/../../A1_auxiliaryScripts
 > > ~~~
 > > {: .language-bash}
 > >
@@ -414,22 +414,50 @@ keypoints:
 > {: .solution}
 >
 > ~~~
-> #4. Rename the processor* directories into bak.processor*
-> #(OpenFOAM wont be able to see these directories)
-> #(Access will be performed through soft links)
-> echo "Renaming the processor directories"
-> rename processor bak.processor processor*
+> #3. Create the directory where the OverlayFS files are going to be kept
+> if ! [ -d ./overlayFSDir ]; then
+>    echo "Creating the directory ./overlayFSDir which will contain the overlay* files:"
+>    mkdir -p ./overlayFSDir
+> else
+>    echo "For some reason, the directory ./overlayFSDir for saving the overlay* files already exists:"
+>    echo "Warning:No creation needed"
+> fi
 > ~~~
 > {: .language-bash}
 > 
 > ~~~
-> #5. Creating a first overlay file (overlay0)
-> createOverlay0 $overlaySizeGb;success=$? #Calling the function for creating the overlay0 file
-> if [ $success -eq 222 ]; then
->    echo "overlay0 already exists"
+> #5. Rename the processor* directories into bak.processor* and move them into ./bakDir
+> #(OpenFOAM wont be able to see these directories)
+> #(Access will be performed through soft links)
+> echo "Renaming the processor directories"
+> rename processor bak.processor processor*
+> if ! [ -d ./bakDir ]; then
+>    echo "Creating the directory ./bakDir that will contain the bak.processor* directories:"
+>    mkdir -p ./bakDir
+> else
+>    echo "For some reason, the directory ./bakDir for containing the bak.processor* dirs already exists:"
+>    echo "Warning:No creation needed"
+> fi
+> 
+> if ! [ -d ./bakDir/bak.processor0 ]; then
+>    echo "Moving all bak.processor* directories into ./bakDir"
+>    mv bak.processor* ./bakDir
+> else
+>    echo "The directory ./bakDir/bak.processor0 already exists"
+>    echo "No move/replacement of bak.processor* directories will be performed"
 >    echo "Exiting";exit 1
-> elif [ $success -ne 0 ]; then
->    echo "Failed creating overlay0, exiting"
+> fi
+> ~~~
+> {: .language-bash}
+> 
+> ~~~
+> #6. Creating a first ./overlayFSDir/overlayII file (./overlayFSDir/overlay0)
+> createOverlay0 $overlaySizeGb;success=$? #Calling the function for creating the ./overlayFSDir/overlay0 file
+> if [ $success -eq 222 ]; then 
+>    echo "./overlayFSDir/overlay0 already exists"
+>    echo "Exiting";exit 1
+> elif [ $success -ne 0 ]; then 
+>    echo "Failed creating ./overlayFSDir/overlay0, exiting"
 >    echo "Exiting";exit 1
 > fi
 > ~~~
@@ -437,51 +465,51 @@ keypoints:
 > - Note the use of the `createOverlay0` function
 > - The function receives as an argument the size (in Gb) of the file to be created
 > - The returned value of the function is saved in the `success` variable and then checked
-> - Read the definition of the function in `../auxiliaryScripts/ofContainersOverlayFunctions.sh`
+> - Read the definition of the function in `../../A1_auxiliaryScripts/ofContainersOverlayFunctions.sh`
 >
 > <p>&nbsp;</p>
 > 
 > ~~~
-> #6. Replicating the overlay0 file into the needed number of overlay* files (as many as processors*)
-> echo "Replication overlay0 into the rest of the overlay* files"
+> #7. Replicating the ./overlayFSDir/overlay0 file into the needed number of ./overlayFSDir/overlay* files (as many as processors*)
+> echo "Replication ./overlayFSDir/overlay0 into the rest of the ./overlayFSDir/overlay* files"
 > for ii in $(seq 1 $(( foam_numberOfSubdomains - 1 ))); do
->    if [ -f overlay${ii} ]; then
->       echo "overlay${ii} already exists"
->       echo "Deal with it first and remove it from the working directory"
->       echo "Exiting";exit 1
->    else
->       echo "Replicating overlay0 into overlay${ii}"
->       srun -n 1 -N 1 --mem-per-cpu=0 --exclusive cp overlay0 overlay${ii} &
->    fi
+>     if [ -f ./overlayFSDir/overlay${ii} ]; then
+>        echo "./overlayFSDir/overlay${ii} already exists"
+>        echo "Deal with it first and remove it from the working directory"
+>        echo "Exiting";exit 1
+>     else
+>        echo "Replicating ./overlayFSDir/overlay0 into ./overlayFSDir/overlay${ii}"
+>        srun -n 1 -N 1 --mem-per-cpu=0 --exclusive cp ./overlayFSDir/overlay0 ./overlayFSDir/overlay${ii} &
+>     fi
 > done
 > wait
 > ~~~
 > {: .language-bash}
 > 
 > ~~~
-> #7. Creating inside processor* directories inside the overlayFS 
+> #8. Creating the processor* directories inside the ./overlayFSDir/overlay* files
 > createInsideProcessorDirs $insideDir $foam_numberOfSubdomains;success=$? #Calling the function for creatingthe inside directories 
-> if [ $success -eq 222 ]; then
->    echo "$insideDir/processor0 already exists"
+> if [ $success -eq 222 ]; then 
+>    echo "$insideDir/processor0 already exists inside the ./overlayFSDir/overlay0 file"
 >    echo "Exiting";exit 1
-> elif [ $success -ne 0 ]; then
+> elif [ $success -ne 0 ]; then 
 >    echo "Failed creating the inside directories, exiting"
 >    echo "Exiting";exit 1
 > fi
 > ~~~
 > {: .language-bash}
 > - Note the use of the `createInsideProcessorDirs` function
-> - The function receives as arguments: 1) the path inside the OverlayFS files where to create the `processorN` dirs, and 2) the number of subdomains.
+> - The function receives as arguments: 1) the path inside the OverlayFS files where to create the `processor*` dirs, and 2) the number of subdomains.
 > - The returned value of the function is saved in the `success` variable and then checked
-> - Read the definition of the function in `../auxiliaryScripts/ofContainersOverlayFunctions.sh`
+> - Read the definition of the function in `../../A1_auxiliaryScripts/ofContainersOverlayFunctions.sh`
 >
 > <p>&nbsp;</p>
 >
 > ~~~
-> #8. Transfer the content of the bak.processor* directories into the overlayFS
-> echo "Copying OpenFOAM files inside bak.processor* into the overlays"
-> copyIntoOverlayII 'bak.processor${ii}/*' "$insideDir/"'processor${ii}/' "$foam_numberOfSubdomains" "true";success=$? #Calling the function for copying into the overlays (see usage instructions in the function definition)
-> if [ $success -ne 0 ]; then
+> #9. Transfer the content of the ./bakDir/bak.processor* directories into the ./overlayFSDir/overlay* files
+> echo "Copying OpenFOAM the files inside ./bakDir/bak.processor* into the ./overlayFSDir/overlay* files"
+> copyIntoOverlayII './bakDir/bak.processor${ii}/*' "$insideDir/"'processor${ii}/' "$foam_numberOfSubdomains" "true";success=$? 
+> if [ $success -ne 0 ]; then 
 >    echo "Failed creating the inside directories, exiting"
 >    echo "Exiting";exit 1
 > fi
@@ -490,27 +518,27 @@ keypoints:
 > - Note the use of the `copyIntoOverlayII` function
 > - The function receives as arguments: 1) the source of the copy, 2) the destination, 3) the number of subdomains and 4) a boolean for replacing content or not
 > - Note the use of single quotes for passing the wildcard '*' to the function without evaluation
-> - Also note the use of single quotes '${ii}' in the place where the number of the overlayN/processorN is needed
+> - Also note the use of single quotes '...${ii}...' in the place where the number of the overlay${ii} (or processor${ii}) is needed
 > - The returned value of the function is saved in the `success` variable and then checked
-> - Read the definition of the function in `../auxiliaryScripts/ofContainersOverlayFunctions.sh`
+> - Read the definition of the function in `../../A1_auxiliaryScripts/ofContainersOverlayFunctions.sh`
 >
 > <p>&nbsp;</p>
 >
 > ~~~
-> #9. Mark the initial conditions time directory as already fully reconstructed
+> #10. Mark the initial conditions time directory as already fully reconstructed
 > echo "Marking the time directory \"0\" as fully reconstructed"
 > touch 0/.reconstructDone
 > ~~~
 > {: .language-bash}
-> - A dummy empty and hidden file named `.reconstructDone` is used to mark those times that have been successfully reconstructed
+> - A dummy empty and hidden file named `.reconstructDone` is used to mark those result-times that have been successfully reconstructed
 > - In this case, as the time `0` is originally reconstructed by default, it is marked
 >
 > <p>&nbsp;</p>
 >
 > ~~~
-> #10. List the content of directories inside the overlay* files
-> echo "Listing the content in overlay0 $insideDir/processor0"
-> srun -n 1 -N 1 singularity exec --overlay overlay0 $theImage ls -lat $insideDir/processor0/
+> #11. List the content of directories inside the ./overlayFSDir/overlay* files
+> echo "Listing the content in ./overlayFSDir/overlay0 $insideDir/processor0"
+> srun -n 1 -N 1 singularity exec --overlay ./overlayFSDir/overlay0 $theImage ls -lat $insideDir/processor0/
 > ~~~
 > {: .language-bash}
 >
@@ -523,35 +551,47 @@ keypoints:
 >    zeus-1:*-2.4.x> sbatch --reservation=$myReservation C.prepareOverlayFoam.sh 
 >    ~~~
 >    {: .bash}
+>    - If a reservation is not available, do not use the option. (Or you can use the debugq: `--partition=debugq` instead.)
 >    
 >    ~~~
 >    Submitted batch job 4642685 on cluster zeus
 >    ~~~
 >    {: .output}
 > 
-> 2. Check that the overlay files were created and the processor* directories renamed to bak.processor*:
+> 2. Check that the processor* directories were renamed/moved to ./bakDir/bak.processor*:
 > 
 >    ~~~
 >    zeus-1:*-2.4.x> cd run/channel395
->    zeus-1:channel395> ls
+>    zeus-1:channel395> ls ./bakDir
 >    ~~~
 >    {: .bash}
 > 
 >    ~~~
->    0      Allrun          bak.processor1  bak.processor3  constant  overlay0  overlay2  overlay4
->    0.org  bak.processor0  bak.processor2  bak.processor4  logs      overlay1  overlay3  system
+>    bak.processor0  bak.processor1  bak.processor2  bak.processor3  bak.processor4
 >    ~~~
 >    {: .output}
->    - There are now 5 `overlayN` files
->    - All `processorN` directories have been renamed to `bak.processorN`
+>    - All `processor*` directories have been renamed/moved to `./bakDir/bak.processor*`
 >
-> 3. Explore the content of one of the overlay files:
+> 3. Check that ./overlayFSDir/overlay* files exist:
+> 
+>    ~~~
+>    zeus-1:channel395> ls ./overlayFSDir
+>    ~~~
+>    {: .bash}
+> 
+>    ~~~
+>    overlay0  overlay1  overlay2  overlay3  overlay4
+>    ~~~
+>    {: .output}
+>    - All `./overlayFSDir/overlay*` files exist
+>
+> 4. Explore the content of one of the overlay files:
 >
 >    ~~~
 >    zeus-1:channel395> module load singularity
 >    zeus-1:channel395> theImage=/group/singularity/pawseyRepository/OpenFOAM/openfoam-2.4.x-pawsey.sif
 >    zeus-1:channel395> insideDir=/overlayOpenFOAM/run/channel395
->    zeus-1:channel395> singularity exec --overlay overlay1 $theImage ls -lat $insideDir/processor1/
+>    zeus-1:channel395> singularity exec --overlay ./overlayFSDir/overlay1 $theImage ls -lat $insideDir/processor1/
 >    ~~~
 >    {: .bash}
 >
@@ -584,9 +624,9 @@ keypoints:
 > {: .language-bash}
 > 
 > ~~~
-> #7. Creating soft links towards directories inside the overlayFS files
+> #7. Creating soft links towards directories inside the ./overlayFSDir/overlay* files
 > #These links and directories will be recognized by each mpi instance of the container
-> #(Initially these links will appear broken as they are pointing towards the interior of the overlay* files.
+> #(Initially these links will appear broken as they are pointing towards the interior of the ./overlayFSDir/overlay* files.
 > # They will only be recognized within the containers)
 > pointToOverlay $insideDir $foam_numberOfSubdomains;success=$? #Calling function to point towards the interior
 > if [ $success -ne 0 ]; then
@@ -596,29 +636,31 @@ keypoints:
 > ~~~
 > {: .language-bash}
 > - Note the use of the `pointToOverlay` function
-> - The function receives as arguments: 1) the path inside the OverlayFS files where to create the `processorN` dirs, and 2) the number of subdomains.
+> - The function receives as arguments: 1) the path inside the OverlayFS files where to create the `processor*` dirs, and 2) the number of subdomains.
 > - The returned value of the function is saved in the `success` variable and then checked
-> - Read the definition of the function in `../auxiliaryScripts/ofContainersOverlayFunctions.sh`
+> - Read the definition of the function in `../../A1_auxiliaryScripts/ofContainersOverlayFunctions.sh`
 >
 > <p>&nbsp;</p>
 >
 > ~~~
-> #8. Execute the case using the softlinks to write inside the overlays
+> #8. Execute the case 
 > echo "About to execute the case"
-> srun -n $SLURM_NTASKS -N $SLURM_JOB_NUM_NODES bash -c 'singularity exec --overlay overlay${SLURM_PROCID} '"$theImage"' pimpleFoam -parallel 2>&1' | tee $logsDir/log.pimpleFoam.$SLURM_JOBID
+> srun -n $SLURM_NTASKS -N $SLURM_JOB_NUM_NODES bash -c "singularity exec --overlay ./overlayFSDir/"'overlay${SLURM_PROCID}'" $theImage pimpleFoam -parallel 2>&1" | tee $logsDir/log.pimpleFoam.$SLURM_JOBID
 > echo "Execution finished"
 > ~~~
 > {: .language-bash}
 > - VERY IMPORTANT: Note that the singularity command is called inside a `bash -c` command
-> - This is the way we allow each MPI task to pick a different overlay file through the `SLURM_PROCID` variable
-> - Here, `theImage` is not a global environment variable, so we use the shift to a `"..."` section to evaluate the variable in the host shell
+> - This is the way we allow each MPI task to pick a different `./overlayFSDir/overlay*` file through the `SLURM_PROCID` variable
+> - Here, `SLURM_PROCID` is slurm environment variable which needs to be evaluated when executing the container, so we use the section in single quotes `'...'` to allow the internal evaluation of that variable
+> - Here, `theImage` is not a global environment variable, is evaluated by the host shell in a section with double quotes `"..."` at the command line
+> - The total string passed to `bash -c` is the concatenation of two doble quotes sections with a single quotes section in between
 > 
 > <p>&nbsp;</p>
 >
 > ~~~
-> #9. List the existing times inside the overlays 
-> echo "Listing the available times inside overlay0"
-> srun -n 1 -N 1 singularity exec --overlay overlay0 $theImage ls -lat processor0/
+> #10. List the existing times inside the ./overlayFSDir/overlay0 
+> echo "Listing the available times inside ./overlayFSDir/overlay0"
+> srun -n 1 -N 1 singularity exec --overlay ./overlayFSDir/overlay0 $theImage ls -lat processor0/
 > ~~~
 > {: .language-bash}
 {: .solution}
@@ -630,6 +672,7 @@ keypoints:
 >    zeus-1:*-2.4.x> sbatch --reservation=$myReservation D.runFoam.sh 
 >    ~~~
 >    {: .bash}
+>    - If a reservation is not available, do not use the option. (Or you can use the debugq: `--partition=debugq` instead.)
 >    
 >    ~~~
 >    Submitted batch job 4632685 on cluster zeus
@@ -679,7 +722,7 @@ keypoints:
 >    ~~~
 >    {: .output}
 > 
-> 3. You can see in the case directory that now there are several `processorN` **soft links**
+> 3. You can see in the case directory that now there are several `processor*` **soft links**
 >    ~~~
 >    zeus-1:*-2.4.x> cd run/channel395
 >    zeus-1:channel395> ls -lat 
@@ -688,11 +731,6 @@ keypoints:
 >
 >    ~~~
 >    total 5242952
->    -rw-rw----+  1 espinosa pawsey0001 1073741824 May 25 14:55 overlay0
->    -rw-rw----+  1 espinosa pawsey0001 1073741824 May 25 14:55 overlay1
->    -rw-rw----+  1 espinosa pawsey0001 1073741824 May 25 14:55 overlay2
->    -rw-rw----+  1 espinosa pawsey0001 1073741824 May 25 14:55 overlay3
->    -rw-rw----+  1 espinosa pawsey0001 1073741824 May 25 14:55 overlay4
 >    drwxr-s---+ 12 espinosa pawsey0001       4096 May 25 14:55 .
 >    drwxrws---+  4 espinosa pawsey0001       4096 May 25 14:55 logs
 >    lrwxrwxrwx   1 espinosa pawsey0001         42 May 25 14:55 processor0 -> /overlayOpenFOAM/run/channel395/processor0
@@ -701,11 +739,8 @@ keypoints:
 >    lrwxrwxrwx   1 espinosa pawsey0001         42 May 25 14:55 processor3 -> /overlayOpenFOAM/run/channel395/processor3
 >    lrwxrwxrwx   1 espinosa pawsey0001         42 May 25 14:55 processor4 -> /overlayOpenFOAM/run/channel395/processor4
 >    drwxr-s---+  2 espinosa pawsey0001       4096 May 25 14:55 system
->    drwxrws---+  4 espinosa pawsey0001       4096 May 25 14:53 bak.processor0
->    drwxrws---+  4 espinosa pawsey0001       4096 May 25 14:53 bak.processor1
->    drwxrws---+  4 espinosa pawsey0001       4096 May 25 14:53 bak.processor2
->    drwxrws---+  4 espinosa pawsey0001       4096 May 25 14:53 bak.processor3
->    drwxrws---+  4 espinosa pawsey0001       4096 May 25 14:53 bak.processor4
+>    drwxrws---+  4 espinosa pawsey0001       4096 May 25 14:53 bakDir
+>    drwxrws---+  4 espinosa pawsey0001       4096 May 25 14:53 overlayFSDir
 >    drwxr-s---+  2 espinosa pawsey0001       4096 May 25 14:53 0
 >    drwxr-s---+  3 espinosa pawsey0001       4096 May 25 14:53 constant
 >    drwxrws---+  3 espinosa pawsey0001       4096 May 25 14:03 ..
@@ -713,7 +748,7 @@ keypoints:
 >    -rwxrwx---+  1 espinosa pawsey0001        483 May 25 14:03 Allrun
 >    ~~~
 >    {: .output}
->    - The `processorN` soft links are pointing to the directories inside the `overlayN` files
+>    - The `processor*` soft links are pointing to the directory structure that "lives" inside the `./overlayFSDir/overlay*` files
 >
 >    
 >    ~~~
@@ -725,14 +760,14 @@ keypoints:
 >    ls: cannot access 'processor1/': No such file or directory
 >    ~~~
 >    {: .output}
->    - The host shell cannot read inside the overlayN files, and that is why the links appear broken 
+>    - The host shell cannot read the directory structure inside the ./overlayFSDir/overlay* files, and that is why the links appear broken 
 >
 > 4. Check that the solver gave some results by listing the interior of an overlay file:
 > 
 >    ~~~
 >    zeus-1:channel395> module load singularity
 >    zeus-1:channel395> theImage=/group/singularity/pawseyRepository/OpenFOAM/openfoam-2.4.x-pawsey.sif
->    zeus-1:channel395> singularity exec --overlay overlay1 $theImage ls processor1/
+>    zeus-1:channel395> singularity exec --overlay ./overlayFSDir/overlay1 $theImage ls processor1/
 >    ~~~
 >    {: .bash}
 > 
@@ -750,7 +785,7 @@ keypoints:
 >    10   12.2  14.4  16.6  18.8  20    22.2  24.4  26.6  28.8  30	 32.2  34.4  36.6  38.8  40    7    9.2
 >    ~~~
 >    {: .output}
->    - (In this case the final time was set to be 40 to allow for the creation of more results)
+>    - (In this example the final time was set to be 40 to allow for the creation of more results)
 >
 >    <p>&nbsp;</p>
 >
@@ -767,11 +802,11 @@ keypoints:
 > - Yes, this implies that the results need to be copied back to the host file system before reconstruction
 > - This is the inverse operation to the process of copying the initial decomposition into the OverlayFS files (explained at the beginning of this episode)
 > - But in order to avoid the presence of many files in the host, this should be done by small batches:
->    1. Copy small batch of results from the interior to the `bak.processorN` directories
->    2. Now create `processorN` soft links to point to `bak.processorN` directories and not to the OverlayFS interior
+>    1. Copy small batch of results from the interior to the `bak.processor*` directories
+>    2. Now create `processor*` soft links to point to `bak.processor*` directories and not to the OverlayFS interior
 >    3. Reconstruct that small batch
->    4. Remove the reconstructed times from the `bak.processorN` directories
->    5. Continue the cycle in 1. again until postprocessing all the times needed
+>    4. Remove the reconstructed result-times from the `bak.processor*` directories
+>    5. Continue the cycle in 1. again until postprocessing all the result-times needed
 >
 {: .prereq}
 
@@ -800,16 +835,16 @@ keypoints:
 > ~~~
 > {: .language-bash}
 > - Note the use of the `generateReconstructArray` function
-> - The function receives as arguments: 1)the string defining the times to be reconstructed, and 2) the path inside the OverlayFS files where to create the `processorN` dirs
+> - The function receives as arguments: 1)the string defining the result-times to be reconstructed, and 2) the path inside the OverlayFS files where to create the `processor*` dirs
 > - The returned value of the function is saved in the `success` variable and then checked
-> - The GLOBAL array `arrayReconstruct` is unset before calling the function, and the function will create a new one with the times to be reconstructed
-> - Read the definition of the function in `../auxiliaryScripts/ofContainersOverlayFunctions.sh`
+> - The GLOBAL array `arrayReconstruct` is unset before calling the function, and the function will create a new one with the result-times to be reconstructed
+> - Read the definition of the function in `../../A1_auxiliaryScripts/ofContainersOverlayFunctions.sh`
 >
 > <p>&nbsp;</p>
 >
 > 
 > ~~~
-> #5. Point the soft links to the bak.processor* directories
+> #5. Point the soft links to the ./bakDir/bak.processor* directories
 > pointToBak $foam_numberOfSubdomains;success=$? #Calling function to point towards the bak.processors
 > if [ $success -ne 0 ]; then
 >    echo "Failed creating the soft links"
@@ -820,7 +855,7 @@ keypoints:
 > - Note the use of the `pointToBak` function
 > - The function receives as argument the number of subdomains.
 > - The returned value of the function is saved in the success variable and then checked
-> - Read the definition of the function in ../auxiliaryScripts/ofContainersOverlayFunctions.sh
+> - Read the definition of the function in `../../A1_auxiliaryScripts/ofContainersOverlayFunctions.sh`
 >
 > <p>&nbsp;</p>
 >
@@ -832,9 +867,9 @@ keypoints:
 > 
 > <p>&nbsp;</p>
 >
-> - The following sections are executed inside a loop (not shown here) as many times needed to postprocess all the times required batch by batch:
+> - The following sections are executed inside a loop (not shown here) as many times needed to postprocess all the result-times required batch by batch:
 >     ~~~
->     ## 9. Copy from the overlays the full batch into bak.processor*
+>     ## 9. Copy from the ./overlayFSDir/overlay* the full batch into ./bakDir/bak.processor*
 >     unset arrayCopyIntoBak
 >     arrayCopyIntoBak=("${hereToDoReconstruct[@]}")
 >     replace="true"
@@ -845,11 +880,11 @@ keypoints:
 >     fi
 >     ~~~
 >     {: .language-bash}
->     - The array `hereToDoReconstruct` has the times to be processed in the current batch
+>     - The array `hereToDoReconstruct` has the result-times to be processed in the current batch
 >     - Note the use of the `copyResultsIntoBak` function
->     - The function receives as arguments: 1) the path inside the overlays, 2) the number of subdomains, 3) the indication for replacing or not already existing times in the bak directories and 4) the array with the times to process.
+>     - The function receives as arguments: 1) the path inside the overlays, 2) the number of subdomains, 3) the indication for replacing or not already existing result-times in the bak directories and 4) the array with the result-times to process.
 >     - The returned value of the function is saved in the success variable and then checked
->     - Read the definition of the function in ../auxiliaryScripts/ofContainersOverlayFunctions.sh
+>     - Read the definition of the function in `../../A1_auxiliaryScripts/ofContainersOverlayFunctions.sh`
 >    
 >     <p>&nbsp;</p>
 > 
@@ -857,12 +892,14 @@ keypoints:
 >     ~~~
 >     ## 10. Reconstruct all times for this batch.
 >     echo "Start reconstruction"
->     srun -n 1 -N 1 singularity exec $theImage reconstructPar -time ${timeString} 2>&1 | tee $logsDir/log.reconstructPar.$SLURM_JOBID.${hereToDoReconstruct[0]}
+>     logFileHere=$logsDir/log.reconstructPar.${SLURM_JOBID}_${hereToDoReconstruct[0]}-${hereToDoReconstruct[-1]}
+>     srun -n 1 -N 1 singularity exec $theImage reconstructPar -time ${timeString} 2>&1 | tee $logFileHere
 >     ~~~
 >     {: .language-bash}
->     - This command executes the reconstruction
->     - The variable `timeString` has a string with the times to be reconstructed by the OpenFOAM tool `reconstructPar`, this string is set inside the loop (not shown here)
-> - For more details of the logic of the loop refer to the script itself
+>     - The command in the `srun` line executes the reconstruction of the batch
+>     - The variable `timeString` has the list of the result-times to be reconstructed in each batch. This was set in a previous step (in step ## 8., not shown here)
+>     - The output of the reconstruction is saved in the file `logFileHere` (this file needs to be checked when reconstruction errors happen)
+> - For more details of the logic of the loop refer to the full script itself
 >
 {: .solution}
 
@@ -874,6 +911,7 @@ keypoints:
 >    zeus-1:*-2.4.x> sbatch --reservation=$myReservation E.reconstructFromOverlay.sh 
 >    ~~~
 >    {: .bash}
+>    - If a reservation is not available, do not use the option. (Or you can use the debugq: `--partition=debugq` instead.)
 >    
 >    ~~~
 >    Submitted batch job 4632899 on cluster zeus
@@ -884,15 +922,15 @@ keypoints:
 > 
 >    ~~~
 >    zeus-1:*-2.4.x> cd run/channel395/
->    zeus-1:channel395> watch ls bak.processor0/ 
+>    zeus-1:channel395> watch ls ./bakDir/bak.processor0/ 
 >    ~~~
 >    {: .bash}
->    - The command `watch` executes the list of the content of `bak.processor0` every 2 seconds
+>    - The command `watch` executes the `ls` of the content of `./bakDir/bak.processor0` every 2 seconds
 > 
 >     <p>&nbsp;</p>
 >
 >    ~~~
->    Every 2.0s: ls bak.processor0/                                               Mon Jun 15 18:33:16 2020
+>    Every 2.0s: ls ./bakDir/bak.processor0/                                     Mon Jun 15 18:33:16 2020
 >    
 >    0
 >    0.2
@@ -904,14 +942,16 @@ keypoints:
 >    constant
 >    ~~~
 >    {: .output}
->    - The first batch is being copied to the `bak.processorN` directories
->    - In this case `maxTimeTransfersFromOverlays=10` (set in the script) is the size of the batches
->    - After the copy of the first batch is finished, those times will be reconstructed and then removed
+>    - You can watch the progress of the first batch being copied to the `./bakDir/bak.processor0` directory
+>    - The same is happening for the resto of the `./bakDir/bak.processor*` directories
+>    - In this case `maxTimeTransfersFromOverlays=10` (set within the script) is the size of the batches
+>    - After the copy of the first batch is finished, those result-times will be reconstructed
+>    - After succesful reconstruction, those result-times will be removed from the host file system 
 >    
 >     <p>&nbsp;</p>
 >
 >    ~~~
->    Every 2.0s: ls bak.processor0/                                               Mon Jun 15 18:35:36 2020
+>    Every 2.0s: ls ./bakDir/bak.processor0/                                     Mon Jun 15 18:35:36 2020
 >    
 >    0
 >    2.2
@@ -920,20 +960,20 @@ keypoints:
 >    constant
 >    ~~~
 >    {: .output}
->    - A few minutes later, the second batch is being copied to the `bak.processorN` directories
+>    - A few minutes later, the second batch is being copied to the `bak.processor*` directories
 >    - Note that the first batch of files have been removed already from the system
 >    
 >     <p>&nbsp;</p>
 >
 >    ~~~
->    Every 2.0s: ls bak.processor0/                                               Mon Jun 15 18:39:16 2020
+>    Every 2.0s: ls ./bakDir/bak.processor0/                                    Mon Jun 15 18:39:16 2020
 >    
 >    0
 >    10
 >    constant
 >    ~~~
 >    {: .output}
->    - When finished, the earliest and the latest times that were kept in the `bak.processorN` directories (although this can be modified within the scripts if desired)
+>    - When finished, the earliest and the latest result-times were kept in the `bak.processor*` directories (although this can be modified within the scripts if desired)
 >    
 >     <p>&nbsp;</p>
 >
@@ -959,7 +999,7 @@ keypoints:
 >
 > 4. You should also check for success/errors in:
 >    -  the slurm output file: `slurm-<SLURM_JOBID>.out`
->    -  the log files created when executing the OpenFOAM tools in: `./run/channel395/logs/post/`
+>    -  the log files created when executing the OpenFOAM tools in: `./run/channel395/logs/post/` (check the command for the `reconstructPar` command for understanding the naming convention of the log files. In this case, they contain the `SLURM_JOBID` and the `first-last` result-times reconstructed in each batch.
 {: .challenge}
 
 <p>&nbsp;</p>
@@ -967,8 +1007,8 @@ keypoints:
 ## F. Extract from Overlay into Bak; and G. Reconstruct From Bak
 
 > ## F.G.I These scripts are left for the user to try by themselves
-> - `F.extractFromOverlayIntoBak.sh` is for extracting a batch of times from the overlay files (no reconstruction)
-> - `G.reconstructFromBak.sh` is for reconstructing existing results in the `bak.processorN` directories
+> - `F.extractFromOverlayIntoBak.sh` is for extracting a batch of result-times from the overlay files (no reconstruction)
+> - `G.reconstructFromBak.sh` is for reconstructing existing results in the `bak.processor*` directories
 >
 {: .challenge}
 
