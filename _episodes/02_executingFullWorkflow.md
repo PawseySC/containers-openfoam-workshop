@@ -447,7 +447,8 @@ keypoints:
 > > ## Main command in the script:
 > >
 > > ~~~
-> > srun -n $SLURM_NTASKS -N $SLURM_JOB_NUM_NODES singularity exec $theImage $of_solver -parallel
+> > theSolver=myPimpleFoam
+> > srun -n $SLURM_NTASKS -N $SLURM_JOB_NUM_NODES singularity exec $theImage $theSolver -parallel
 > > ~~~
 > > {: .language-bash}
 > >
@@ -506,14 +507,14 @@ keypoints:
 > > 
 > > ~~~
 > > #10. Defining the solver
-> > of_solver=pimpleFoam
+> > theSolver=pimpleFoam
 > > ~~~
 > > {: .language-bash}
 > > 
 > > ~~~
 > > #11. Execute the case 
 > > echo "About to execute the case"
-> > srun -n $SLURM_NTASKS -N $SLURM_JOB_NUM_NODES singularity exec $theImage $of_solver -parallel 2>&1 | tee $logsDir/log.$theSolver.$SLURM_JOBID
+> > srun -n $SLURM_NTASKS -N $SLURM_JOB_NUM_NODES singularity exec $theImage $theSolver -parallel 2>&1 | tee $logsDir/log.$theSolver.$SLURM_JOBID
 > > echo "Execution finished"
 > > ~~~
 > > {: .language-bash}

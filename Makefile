@@ -54,7 +54,7 @@ site : lesson-md
 
 ## * docker-serve     : use Docker to serve the site
 docker-serve :
-	docker run --rm -it --volume ${PWD}:/srv/jekyll \
+	sudo docker run --rm -it --volume=${PWD}:/srv/jekyll \
            --volume=${PWD}/.docker-vendor/bundle:/usr/local/bundle \
            -p 127.0.0.1:4000:4000 \
            jekyll/jekyll:${JEKYLL_VERSION} \

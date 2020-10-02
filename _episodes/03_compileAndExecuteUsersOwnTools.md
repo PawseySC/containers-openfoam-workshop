@@ -934,9 +934,9 @@ keypoints:
 > ## The `F.runFoam.sh` script 
 > > ## Main command in the script:
 > > ~~~
-> > of_solver=myPimpleFoam
+> > theSolver=myPimpleFoam
 > > projectUserDir=$SLURM_SUBMIT_DIR/projectUserDir
-> > srun -n $SLURM_NTASKS -N $SLURM_JOB_NUM_NODES singularity exec -B $projectUserDir:/home/ofuser/OpenFOAM/ofuser-$theVersion $theImage $of_solver -parallel 
+> > srun -n $SLURM_NTASKS -N $SLURM_JOB_NUM_NODES singularity exec -B $projectUserDir:/home/ofuser/OpenFOAM/ofuser-$theVersion $theImage $theSolver -parallel 2>&1
 > > ~~~
 > > {: .language-bash}
 > {: .callout}
@@ -994,7 +994,7 @@ keypoints:
 > > 
 > > ~~~
 > > #10. Defining the solver
-> > of_solver=myPimpleFoam
+> > theSolver=myPimpleFoam
 > > ~~~
 > > {: .language-bash}
 > > 
@@ -1007,7 +1007,7 @@ keypoints:
 > > ~~~
 > > #12. Execute the case 
 > > echo "About to execute the case"
-> > srun -n $SLURM_NTASKS -N $SLURM_JOB_NUM_NODES singularity exec -B $projectUserDir:/home/ofuser/OpenFOAM/ofuser-$theVersion $theImage $of_solver -parallel 2>&1 | tee $logsDir/log.$theSolver.$SLURM_JOBID
+> > srun -n $SLURM_NTASKS -N $SLURM_JOB_NUM_NODES singularity exec -B $projectUserDir:/home/ofuser/OpenFOAM/ofuser-$theVersion $theImage $theSolver -parallel 2>&1 | tee $logsDir/log.$theSolver.$SLURM_JOBID
 > > echo "Execution finished"
 > > ~~~
 > > {: .language-bash}
